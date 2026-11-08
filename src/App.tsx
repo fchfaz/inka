@@ -1,0 +1,125 @@
+import { useState, useEffect } from 'react';
+import { Study } from './pages/Study';
+import { DeckManager } from './pages/DeckManager';
+import { Settings } from './pages/Settings';
+import { initializeDefaultDeck, getAllDecks } from './services/database';
+import type { Deck } from './types/flashcard';
+import { BookMarked, FolderKanban, Sliders } from 'lucide-react';
+
+export function App() {
+  const [currentPage, setCurrentPage] = useState<'study' | 'decks' | 'settings'>('study');
+  const [currentDeck, setCurrentDeck] = useState<Deck | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    return localStorage.getItem('inka_theme') === 'dark';
+  });
+
+  // Apply dark mode class to root HTML
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('inka_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('inka_theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  // Init default deck on initial boot
+  useEffect(() => {
+    async function init() {
+      await initializeDefaultDeck();
+      const decks = await getAllDecks();
+      if (decks.length > 0) {
+        setCurrentDeck(decks[0]);
+      }
+    }
+    init();
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
+      {/* Top Header */}
+      <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
+        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div
+            className="flex items-center gap-2 cursor-pointer"
+            onClick={() => setCurrentPage('study')}
+          >
+            <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-bold text-sm">
+              印
+            </div>
+            <span className="font-bold text-base tracking-tight text-slate-900 dark:text-white">
+              Inka
+            </span>
+          </div>
+
+          {/* Navigation Tabs */}
+          <nav className="flex items-center gap-1">
+            <button
+              onClick={() => setCurrentPage('study')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
+                currentPage === 'study'
+                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <BookMarked size={15} />
+              <span>Belajar</span>
+            </button>
+
+            <button
+              onClick={() => setCurrentPage('decks')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
+                currentPage === 'decks'
+                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <FolderKanban size={15} />
+              <span>Kelola Deck</span>
+            </button>
+
+            <button
+              onClick={() => setCurrentPage('settings')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
+                currentPage === 'settings'
+                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <Sliders size={15} />
+              <span>Pengaturan</span>
+            </button>
+          </nav>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col justify-center items-center py-6 px-2 sm:px-4">
+        {currentPage === 'study' && (
+          <Study
+            currentDeck={currentDeck}
+            onSelectDeck={(deck) => setCurrentDeck(deck)}
+            onNavigateToDeckManager={() => setCurrentPage('decks')}
+          />
+        )}
+
+        {currentPage === 'decks' && (
+          <DeckManager
+            currentDeck={currentDeck}
+            onSelectDeck={(deck) => setCurrentDeck(deck)}
+          />
+        )}
+
+        {currentPage === 'settings' && (
+          <Settings
+            isDarkMode={isDarkMode}
+            onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+          />
+        )}
+      </main>
+    </div>
+  );
+}
+
+export default App;
