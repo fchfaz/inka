@@ -46,15 +46,32 @@ export const Study: React.FC<StudyProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Load available decks list and daily count
+  // Load available decks list and daily count, plus periodic check for 03:00 AM reset
   useEffect(() => {
-    async function loadMeta() {
+    async function refreshMeta() {
       const allDecks = await getAllDecks();
       setDecks(allDecks);
       const count = await getDailyStudiedCount();
       setDailyStudiedCount(count);
     }
-    loadMeta();
+    refreshMeta();
+
+    // Check every minute or on window focus if 03:00 AM boundary has passed
+    const interval = setInterval(async () => {
+      const count = await getDailyStudiedCount();
+      setDailyStudiedCount(count);
+    }, 60000);
+
+    const onFocus = async () => {
+      const count = await getDailyStudiedCount();
+      setDailyStudiedCount(count);
+    };
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   // Initialize deck and scheduler
