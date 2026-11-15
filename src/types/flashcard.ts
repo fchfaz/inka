@@ -26,6 +26,21 @@ export interface ScheduledInterval {
   scheduledAt: number;
 }
 
+export type ReviewRating = 1 | 2 | 3 | 4; // 1: Again, 2: Hard, 3: Good, 4: Easy
+export type ReviewInterval = 3 | 5 | 30 | 50;
+
+export interface ReviewLog {
+  id?: number;
+  cardId: string;
+  deckId: string;
+  ts: number;              // Date.now() saat menjawab
+  studyDay: string;        // 'YYYY-MM-DD' dengan batas ganti hari 03:00
+  rating: ReviewRating;    // Again | Hard | Good | Easy
+  interval: ReviewInterval;
+  durationMs: number;      // waktu dari kartu tampil sampai jawaban, dibatasi maks 60000
+  isFirstReview: boolean;  // true bila ini review pertama kartu tsb (dasar statistik "kartu baru")
+}
+
 // JSON bundle exchange format
 export interface RecallioBundleCard {
   front: string;

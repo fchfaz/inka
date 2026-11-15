@@ -1,13 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Study } from './pages/Study';
 import { DeckManager } from './pages/DeckManager';
 import { Settings } from './pages/Settings';
 import { initializeDefaultDeck, getAllDecks } from './services/database';
 import type { Deck } from './types/flashcard';
-import { BookMarked, FolderKanban, Sliders } from 'lucide-react';
+import { BookMarked, FolderKanban, BarChart3, Sliders, Clock } from 'lucide-react';
+
+const Statistics = lazy(() =>
+  import('./pages/Statistics').then((module) => ({ default: module.Statistics }))
+);
 
 export function App() {
-  const [currentPage, setCurrentPage] = useState<'study' | 'decks' | 'settings'>('study');
+  const [currentPage, setCurrentPage] = useState<'study' | 'decks' | 'stats' | 'settings'>('study');
   const [currentDeck, setCurrentDeck] = useState<Deck | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return localStorage.getItem('inka_theme') === 'dark';
@@ -76,7 +80,19 @@ export function App() {
               }`}
             >
               <FolderKanban size={15} />
-              <span>Kelola Deck</span>
+              <span className="hidden sm:inline">Kelola Deck</span>
+            </button>
+
+            <button
+              onClick={() => setCurrentPage('stats')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
+                currentPage === 'stats'
+                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <BarChart3 size={15} />
+              <span className="hidden sm:inline">Statistik</span>
             </button>
 
             <button
@@ -88,7 +104,7 @@ export function App() {
               }`}
             >
               <Sliders size={15} />
-              <span>Pengaturan</span>
+              <span className="hidden sm:inline">Pengaturan</span>
             </button>
           </nav>
         </div>
@@ -109,6 +125,22 @@ export function App() {
             currentDeck={currentDeck}
             onSelectDeck={(deck) => setCurrentDeck(deck)}
           />
+        )}
+
+        {currentPage === 'stats' && (
+          <Suspense
+            fallback={
+              <div className="w-full max-w-4xl mx-auto py-16 flex flex-col items-center justify-center text-slate-500">
+                <Clock className="w-8 h-8 animate-spin text-indigo-500 mb-3" />
+                <span className="text-sm">Memuat halaman statistik...</span>
+              </div>
+            }
+          >
+            <Statistics
+              currentDeck={currentDeck}
+              onNavigateToStudy={() => setCurrentPage('study')}
+            />
+          </Suspense>
         )}
 
         {currentPage === 'settings' && (

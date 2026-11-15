@@ -1,29 +1,41 @@
 import { openDB, type IDBPDatabase } from 'idb';
-import type { Deck, Flashcard, ScheduledInterval } from '../types/flashcard';
+import type { Deck, Flashcard, ScheduledInterval, ReviewLog } from '../types/flashcard';
 
 const DB_NAME = 'recallio_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export async function getDB(): Promise<IDBPDatabase> {
   return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      if (!db.objectStoreNames.contains('decks')) {
-        const deckStore = db.createObjectStore('decks', { keyPath: 'id' });
-        deckStore.createIndex('by-name', 'name');
+    upgrade(db, oldVersion) {
+      if (oldVersion < 1) {
+        if (!db.objectStoreNames.contains('decks')) {
+          const deckStore = db.createObjectStore('decks', { keyPath: 'id' });
+          deckStore.createIndex('by-name', 'name');
+        }
+
+        if (!db.objectStoreNames.contains('cards')) {
+          const cardStore = db.createObjectStore('cards', { keyPath: 'id' });
+          cardStore.createIndex('by-deck', 'deckId');
+        }
+
+        if (!db.objectStoreNames.contains('schedules')) {
+          // key is cardId (one active interval schedule per card)
+          db.createObjectStore('schedules', { keyPath: 'cardId' });
+        }
+
+        if (!db.objectStoreNames.contains('session_state')) {
+          db.createObjectStore('session_state');
+        }
       }
 
-      if (!db.objectStoreNames.contains('cards')) {
-        const cardStore = db.createObjectStore('cards', { keyPath: 'id' });
-        cardStore.createIndex('by-deck', 'deckId');
-      }
-
-      if (!db.objectStoreNames.contains('schedules')) {
-        // key is cardId (one active interval schedule per card)
-        db.createObjectStore('schedules', { keyPath: 'cardId' });
-      }
-
-      if (!db.objectStoreNames.contains('session_state')) {
-        db.createObjectStore('session_state');
+      if (oldVersion < 2) {
+        if (!db.objectStoreNames.contains('revlog')) {
+          const revStore = db.createObjectStore('revlog', { keyPath: 'id', autoIncrement: true });
+          revStore.createIndex('by-ts', 'ts');
+          revStore.createIndex('by-deck', 'deckId');
+          revStore.createIndex('by-card', 'cardId');
+          revStore.createIndex('by-studyDay', 'studyDay');
+        }
       }
     },
   });
@@ -215,16 +227,23 @@ export async function saveSessionCounter(deckId: string, counter: number): Promi
 }
 
 /**
+ * Formats a timestamp/date into 'YYYY-MM-DD' with 03:00 AM day boundary cutoff.
+ */
+export function getStudyDayString(date = new Date()): string {
+  const adjusted = new Date(date.getTime() - 3 * 60 * 60 * 1000);
+  const y = adjusted.getFullYear();
+  const m = String(adjusted.getMonth() + 1).padStart(2, '0');
+  const d = String(adjusted.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
  * Calculates current "study day key" that resets at 03:00 AM every day.
  * Example: If now is Nov 8 at 02:30 AM -> belongs to Nov 7 study day.
  * If now is Nov 8 at 03:00 AM or 10:00 PM -> belongs to Nov 8 study day.
  */
 export function getDailyStudyKey(date = new Date()): string {
-  const adjusted = new Date(date.getTime() - 3 * 60 * 60 * 1000);
-  const y = adjusted.getFullYear();
-  const m = String(adjusted.getMonth() + 1).padStart(2, '0');
-  const d = String(adjusted.getDate()).padStart(2, '0');
-  return `daily_studied_${y}-${m}-${d}`;
+  return `daily_studied_${getStudyDayString(date)}`;
 }
 
 export async function getDailyStudiedCount(): Promise<number> {
@@ -241,4 +260,110 @@ export async function incrementDailyStudiedCount(): Promise<number> {
   const next = Number(current) + 1;
   await db.put('session_state', next, key);
   return next;
+}
+
+// Review Log Operations
+export async function addReviewLog(log: Omit<ReviewLog, 'id' | 'studyDay' | 'isFirstReview'>): Promise<ReviewLog> {
+  const db = await getDB();
+  const studyDay = getStudyDayString(new Date(log.ts));
+
+  // Determine if this is the first review for this card
+  const existingCount = await db.countFromIndex('revlog', 'by-card', log.cardId);
+  const isFirstReview = existingCount === 0;
+
+  const fullLog: ReviewLog = {
+    ...log,
+    studyDay,
+    isFirstReview,
+    durationMs: Math.min(Math.max(log.durationMs, 0), 60000), // Bound 0 - 60s
+  };
+
+  const id = await db.add('revlog', fullLog);
+  fullLog.id = Number(id);
+  return fullLog;
+}
+
+export async function getAllReviewLogs(deckId?: string, minTs?: number): Promise<ReviewLog[]> {
+  const db = await getDB();
+  if (minTs !== undefined) {
+    const range = IDBKeyRange.lowerBound(minTs);
+    const logs: ReviewLog[] = await db.getAllFromIndex('revlog', 'by-ts', range);
+    if (deckId) {
+      return logs.filter(l => l.deckId === deckId);
+    }
+    return logs;
+  }
+
+  if (deckId) {
+    return db.getAllFromIndex('revlog', 'by-deck', deckId);
+  }
+
+  return db.getAll('revlog');
+}
+
+export async function clearAllReviewLogs(): Promise<void> {
+  const db = await getDB();
+  await db.clear('revlog');
+}
+
+/**
+ * Seed dummy review logs for development and visual testing of Statistics dashboard
+ */
+export async function seedDummyReviewLogs(targetDeckId: string, cards: Flashcard[]): Promise<number> {
+  const db = await getDB();
+  if (cards.length === 0) return 0;
+
+  const tx = db.transaction('revlog', 'readwrite');
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  let seeded = 0;
+
+  // Generate reviews across the past 90 days with realistic distribution
+  for (let d = 90; d >= 0; d--) {
+    // Some days skipped (85% active days)
+    if (Math.random() < 0.15 && d > 2) continue;
+
+    const reviewsToday = Math.floor(10 + Math.random() * 45); // 10 - 55 reviews
+    const baseDayTime = now - d * dayMs;
+
+    for (let i = 0; i < reviewsToday; i++) {
+      // Pick random hour: peaks in morning 8-10 and evening 19-23
+      let hour = 20;
+      const r = Math.random();
+      if (r < 0.25) hour = 8 + Math.floor(Math.random() * 3);
+      else if (r < 0.4) hour = 12 + Math.floor(Math.random() * 3);
+      else hour = 18 + Math.floor(Math.random() * 5);
+
+      const reviewTs = baseDayTime + hour * 3600000 + Math.floor(Math.random() * 3600000);
+      const randomCard = cards[Math.floor(Math.random() * cards.length)];
+
+      // Rating distribution: Again 15%, Hard 20%, Good 45%, Easy 20%
+      let rating: 1 | 2 | 3 | 4 = 3;
+      const rateRoll = Math.random();
+      if (rateRoll < 0.15) rating = 1;
+      else if (rateRoll < 0.35) rating = 2;
+      else if (rateRoll < 0.8) rating = 3;
+      else rating = 4;
+
+      const intervals: Record<number, 3 | 5 | 30 | 50> = { 1: 3, 2: 5, 3: 30, 4: 50 };
+      const durationMs = Math.floor(2000 + Math.random() * 7000); // 2 - 9 seconds
+
+      const logItem: ReviewLog = {
+        cardId: randomCard.id,
+        deckId: targetDeckId,
+        ts: reviewTs,
+        studyDay: getStudyDayString(new Date(reviewTs)),
+        rating,
+        interval: intervals[rating],
+        durationMs,
+        isFirstReview: d > 60 && Math.random() < 0.4,
+      };
+
+      await tx.store.add(logItem);
+      seeded++;
+    }
+  }
+
+  await tx.done;
+  return seeded;
 }

@@ -8,8 +8,9 @@ import {
   getAllDecks,
   getDailyStudiedCount,
   incrementDailyStudiedCount,
+  addReviewLog,
 } from '../services/database';
-import type { Deck, Flashcard as FlashcardType } from '../types/flashcard';
+import type { Deck, Flashcard as FlashcardType, ReviewRating } from '../types/flashcard';
 import { AlertCircle, RefreshCw, ChevronDown, BookOpen } from 'lucide-react';
 
 interface StudyProps {
@@ -34,6 +35,7 @@ export const Study: React.FC<StudyProps> = ({
 
   const schedulerRef = useRef<CardIntervalScheduler | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const cardShownAtRef = useRef<number>(Date.now());
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -93,7 +95,9 @@ export const Study: React.FC<StudyProps> = ({
       await scheduler.initialize(deckCards);
 
       schedulerRef.current = scheduler;
-      setCurrentCard(scheduler.getCurrentCard());
+      const initialCard = scheduler.getCurrentCard();
+      setCurrentCard(initialCard);
+      cardShownAtRef.current = Date.now();
       setIsFlipped(false);
       setIsLoading(false);
     }
@@ -116,10 +120,23 @@ export const Study: React.FC<StudyProps> = ({
     setIsFlipped(false);
     const next = schedulerRef.current.shuffleDeck();
     setCurrentCard(next);
+    cardShownAtRef.current = Date.now();
   };
 
   const handleReviewSelection = async (interval: 3 | 5 | 30 | 50) => {
-    if (!schedulerRef.current || !currentCard) return;
+    if (!schedulerRef.current || !currentCard || !currentDeck) return;
+
+    const answeredCard = currentCard;
+    const durationMs = Math.min(Math.max(Date.now() - cardShownAtRef.current, 0), 60000);
+
+    // Map interval to rating 1..4 (Again=1, Hard=2, Good=3, Easy=4)
+    const ratingMap: Record<number, ReviewRating> = {
+      3: 1,
+      5: 2,
+      30: 3,
+      50: 4,
+    };
+    const rating = ratingMap[interval];
 
     // Instantly reset flip state without transition animation to avoid reverse spin
     setDisableAnimation(true);
@@ -127,10 +144,25 @@ export const Study: React.FC<StudyProps> = ({
 
     const next = await schedulerRef.current.scheduleCurrentCard(interval);
     setCurrentCard(next);
+    cardShownAtRef.current = Date.now();
 
     // Increment daily studied count (resets at 03:00 AM)
     const newDaily = await incrementDailyStudiedCount();
     setDailyStudiedCount(newDaily);
+
+    // Record review log in IndexedDB
+    try {
+      await addReviewLog({
+        cardId: answeredCard.id,
+        deckId: currentDeck.id,
+        ts: Date.now(),
+        rating,
+        interval,
+        durationMs,
+      });
+    } catch (err) {
+      console.error('Failed to save review log:', err);
+    }
   };
 
   if (isLoading) {
