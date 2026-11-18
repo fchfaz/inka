@@ -4,6 +4,7 @@ import { DeckManager } from './pages/DeckManager';
 import { Settings } from './pages/Settings';
 import { initializeDefaultDeck, getAllDecks, getSettings, migrateLegacyProgress } from './services/database';
 import { installSfxListener } from './services/sfx';
+import { LanguageProvider, useTranslation } from './context/LanguageContext';
 import type { Deck } from './types/flashcard';
 import { BookMarked, FolderKanban, BarChart3, Sliders, Clock } from 'lucide-react';
 
@@ -11,7 +12,8 @@ const Statistics = lazy(() =>
   import('./pages/Statistics').then((module) => ({ default: module.Statistics }))
 );
 
-export function App() {
+function MainContent() {
+  const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState<'study' | 'decks' | 'stats' | 'settings'>('study');
   const [currentDeck, setCurrentDeck] = useState<Deck | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -71,7 +73,7 @@ export function App() {
           <nav className="flex items-center gap-1">
             <button
               onClick={() => setCurrentPage('study')}
-              aria-label="Belajar"
+              aria-label={t.navStudy}
               data-sfx="nav"
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
                 currentPage === 'study'
@@ -80,12 +82,12 @@ export function App() {
               }`}
             >
               <BookMarked size={15} />
-              <span>Belajar</span>
+              <span>{t.navStudy}</span>
             </button>
 
             <button
               onClick={() => setCurrentPage('decks')}
-              aria-label="Kelola Deck"
+              aria-label={t.navDecks}
               data-sfx="nav"
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
                 currentPage === 'decks'
@@ -94,12 +96,12 @@ export function App() {
               }`}
             >
               <FolderKanban size={15} />
-              <span className="hidden sm:inline">Kelola Deck</span>
+              <span className="hidden sm:inline">{t.navDecks}</span>
             </button>
 
             <button
               onClick={() => setCurrentPage('stats')}
-              aria-label="Statistik"
+              aria-label={t.navStats}
               data-sfx="nav"
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
                 currentPage === 'stats'
@@ -108,12 +110,12 @@ export function App() {
               }`}
             >
               <BarChart3 size={15} />
-              <span className="hidden sm:inline">Statistik</span>
+              <span className="hidden sm:inline">{t.navStats}</span>
             </button>
 
             <button
               onClick={() => setCurrentPage('settings')}
-              aria-label="Pengaturan"
+              aria-label={t.navSettings}
               data-sfx="nav"
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
                 currentPage === 'settings'
@@ -122,7 +124,7 @@ export function App() {
               }`}
             >
               <Sliders size={15} />
-              <span className="hidden sm:inline">Pengaturan</span>
+              <span className="hidden sm:inline">{t.navSettings}</span>
             </button>
           </nav>
         </div>
@@ -150,7 +152,7 @@ export function App() {
             fallback={
               <div className="w-full max-w-4xl mx-auto py-16 flex flex-col items-center justify-center text-slate-500">
                 <Clock className="w-8 h-8 animate-spin text-indigo-500 mb-3" />
-                <span className="text-sm">Memuat halaman statistik...</span>
+                <span className="text-sm">Memuat...</span>
               </div>
             }
           >
@@ -169,6 +171,14 @@ export function App() {
         )}
       </main>
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <LanguageProvider>
+      <MainContent />
+    </LanguageProvider>
   );
 }
 

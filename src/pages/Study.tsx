@@ -2,6 +2,7 @@ import { toPlainText, toSpeechText } from '../services/richText';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Flashcard } from '../components/Flashcard';
 import { ReviewButtons } from '../components/ReviewButtons';
+import { useTranslation } from '../context/LanguageContext';
 import {
   getCardsByDeck,
   getAllDecks,
@@ -51,6 +52,7 @@ function formatClock(ts: number): string {
 }
 
 export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavigateToDeckManager }) => {
+  const { t } = useTranslation();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [cardCount, setCardCount] = useState(0);
   const [settings, setSettings] = useState<StudySettings>(DEFAULT_SETTINGS);
@@ -360,7 +362,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-slate-500">
         <RefreshCw className="w-8 h-8 animate-spin mb-3 text-indigo-500" />
-        <p className="text-sm">Memuat flashcard...</p>
+        <p className="text-sm">{t.loadingFlashcard}</p>
       </div>
     );
   }
@@ -369,15 +371,15 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
     return (
       <div className="max-w-md mx-auto text-center py-12 px-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm mt-8">
         <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Deck Kosong</h3>
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t.emptyDeckTitle}</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-          Belum ada kartu di deck ini atau belum ada deck yang dipilih. Anda dapat menambahkan kartu atau mengimpor file JSON.
+          {t.emptyDeckDesc}
         </p>
         <button
           onClick={onNavigateToDeckManager}
           className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-md transition-all duration-150"
         >
-          Kelola Flashcard & Deck
+          {t.manageCardsAndDecks}
         </button>
       </div>
     );
@@ -414,7 +416,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
 
           {isDeckDropdownOpen && (
             <div className="absolute left-0 mt-1.5 w-64 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl z-50 py-1.5 max-h-60 overflow-y-auto">
-              <div className="px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pilih Deck</div>
+              <div className="px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t.deckDropdownTitle}</div>
               {decks.map((deck) => (
                 <button
                   key={deck.id}
@@ -440,17 +442,17 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
                   }}
                   className="w-full text-left px-3.5 py-2 text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
-                  + Buat / Kelola Deck Lain
+                  {t.createManageOtherDecks}
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-3" aria-label="Sisa antrean">
-          {chip('Baru', counts.newCount, 'text-sky-600 dark:text-sky-400', current?.kind === 'new')}
-          {chip('Belajar', counts.learningCount, 'text-rose-600 dark:text-rose-400', current?.kind === 'learning')}
-          {chip('Review', counts.reviewCount, 'text-emerald-600 dark:text-emerald-400', current?.kind === 'review')}
+        <div className="flex items-center gap-3" aria-label={t.queueRemaining}>
+          {chip(t.queueNew, counts.newCount, 'text-sky-600 dark:text-sky-400', current?.kind === 'new')}
+          {chip(t.queueLearning, counts.learningCount, 'text-rose-600 dark:text-rose-400', current?.kind === 'learning')}
+          {chip(t.queueReview, counts.reviewCount, 'text-emerald-600 dark:text-emerald-400', current?.kind === 'review')}
         </div>
       </div>
 
@@ -471,34 +473,34 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
               data-sfx="none"
               onClick={handleUndo}
               disabled={undoDepth === 0}
-              title="Batalkan (Z)"
+              title={`${t.actionUndo} (Z)`}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none"
             >
-              <Undo2 className="w-4 h-4" /> Undo
+              <Undo2 className="w-4 h-4" /> {t.actionUndo}
             </button>
             <button
               data-sfx="none"
               onClick={handleSuspend}
-              title="Tangguhkan kartu (S)"
+              title={`${t.actionSuspend} (S)`}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
             >
-              <Pause className="w-4 h-4" /> Suspend
+              <Pause className="w-4 h-4" /> {t.actionSuspend}
             </button>
             <button
               data-sfx="none"
               onClick={handleBury}
-              title="Sembunyikan sampai besok (B)"
+              title={`${t.actionBury} (B)`}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
             >
-              <EyeOff className="w-4 h-4" /> Bury
+              <EyeOff className="w-4 h-4" /> {t.actionBury}
             </button>
             <button
               data-sfx="none"
               onClick={() => handleSpeak()}
-              title="Bacakan (R)"
+              title={`${t.actionVoice} (R)`}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
             >
-              <Volume2 className="w-4 h-4" /> Suara
+              <Volume2 className="w-4 h-4" /> {t.actionVoice}
             </button>
           </div>
 
@@ -511,7 +513,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
               onClick={handleFlip}
                 className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md transition"
               >
-                Tampilkan Jawaban <span className="text-xs opacity-70 ml-1">(Spasi)</span>
+                {t.showAnswer} <span className="text-xs opacity-70 ml-1">(Spasi)</span>
               </button>
             </div>
           )}
@@ -519,11 +521,11 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
       ) : (
         <div className="w-full max-w-md mx-auto text-center py-10 px-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
           <PartyPopper className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">Selesai untuk sekarang</h3>
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{t.sessionFinishedTitle}</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
             {nextLearningAt
-              ? `Kartu berikutnya muncul sekitar pukul ${formatClock(nextLearningAt)}.`
-              : 'Tidak ada kartu yang jatuh tempo. Kembali lagi besok.'}
+              ? t.nextLearningClock(formatClock(nextLearningAt))
+              : t.noDueCardsTomorrow}
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
             {newRemaining > 0 && (
@@ -531,7 +533,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
                 onClick={handleStudyMore}
                 className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold"
               >
-                Tambah {Math.min(EXTRA_NEW_STEP, newRemaining)} kartu baru
+                {t.addNewCardsBtn(Math.min(EXTRA_NEW_STEP, newRemaining))}
               </button>
             )}
             {undoDepth > 0 && (
@@ -549,14 +551,11 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
 
       <div className="w-full max-w-xl mx-auto px-2 mt-4">
         <div className="w-full flex items-center justify-between text-xs sm:text-sm text-slate-600 dark:text-slate-400 border-t border-slate-200/80 dark:border-slate-800 pt-3">
-          <span className="font-medium text-slate-500 dark:text-slate-400">Kartu dipelajari hari ini:</span>
+          <span className="font-medium text-slate-500 dark:text-slate-400">{t.cardsStudiedToday}</span>
           <span className="font-bold text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-lg">
-            {dailyStudiedCount} kartu
+            {t.countCardsSuffix(dailyStudiedCount)}
           </span>
         </div>
-        <p className="hidden sm:block text-center text-[11px] text-slate-400 mt-2">
-          Spasi: balik / Good · 1–4: jawab · Z: undo · S: suspend · B: bury · R: suara
-        </p>
       </div>
     </div>
   );

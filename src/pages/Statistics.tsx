@@ -1,5 +1,6 @@
 import { toPlainText } from '../services/richText';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from '../context/LanguageContext';
 import type { Deck, Flashcard, ReviewLog } from '../types/flashcard';
 import {
   getAllDecks,
@@ -45,6 +46,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
   currentDeck,
   onNavigateToStudy,
 }) => {
+  const { t } = useTranslation();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [selectedDeckId, setSelectedDeckId] = useState<string>(() => {
     return currentDeck?.id || 'all';
@@ -183,10 +185,10 @@ export const Statistics: React.FC<StatisticsProps> = ({
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <BarChart3 className="w-6 h-6 text-indigo-500" />
-            Statistik Pembelajaran
+            {t.statsTitle}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500">
-            Analisis kemajuan, kebiasaan belajar, dan penguasaan kartu secara mendalam.
+            {t.statsSubtitle}
           </p>
         </div>
 
@@ -217,7 +219,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
                       : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                   }`}
                 >
-                  <span>Semua Deck</span>
+                  <span>{t.allDecksOption}</span>
                   {selectedDeckId === 'all' && <span>✓</span>}
                 </button>
                 {decks.map(d => (
@@ -245,11 +247,11 @@ export const Statistics: React.FC<StatisticsProps> = ({
           <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800/80 p-0.5 text-xs">
             {(['7d', '1m', '3m', '1y', 'all'] as TimeRangeKey[]).map(r => {
               const labels: Record<TimeRangeKey, string> = {
-                '7d': '7 Hari',
-                '1m': '1 Bulan',
-                '3m': '3 Bulan',
-                '1y': '1 Tahun',
-                all: 'Semua',
+                '7d': t.range7d,
+                '1m': t.range1m,
+                '3m': t.range3m,
+                '1y': t.range1y,
+                all: t.rangeAll,
               };
               return (
                 <button

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Moon, Sun, Info, Smartphone, HardDriveDownload, Save, Download, Upload, AlertTriangle, Volume2 } from 'lucide-react';
+import { Moon, Sun, Info, Smartphone, HardDriveDownload, Save, Download, Upload, AlertTriangle, Volume2, Globe } from 'lucide-react';
+import { useTranslation } from '../context/LanguageContext';
 import { getSettings, saveSettings } from '../services/database';
 import { parseSteps } from '../services/srs';
 import { configureSfx, playSfx, SFX_NAMES, type SfxName } from '../services/sfx';
@@ -25,6 +26,7 @@ const input =
 const label = 'block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1';
 
 export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode }) => {
+  const { language, setLanguage, t } = useTranslation();
   const [form, setForm] = useState<StudySettings>(DEFAULT_SETTINGS);
   const [learningText, setLearningText] = useState(DEFAULT_SETTINGS.learningSteps.join(' '));
   const [relearningText, setRelearningText] = useState(DEFAULT_SETTINGS.relearningSteps.join(' '));
@@ -117,8 +119,8 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
   return (
     <div className="w-full max-w-2xl mx-auto px-4 py-6 space-y-6">
       <div className="pb-3 border-b border-slate-200 dark:border-slate-800">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Pengaturan</h2>
-        <p className="text-sm text-slate-500">Konfigurasi tampilan, penjadwalan belajar, dan backup.</p>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{t.settingsTitle}</h2>
+        <p className="text-sm text-slate-500">{t.settingsSubtitle}</p>
       </div>
 
       {message && (
@@ -134,6 +136,44 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
         </div>
       )}
 
+      {/* Bahasa Aplikasi */}
+      <div className={`${card} flex items-center justify-between`}>
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+            <Globe size={22} />
+          </div>
+          <div>
+            <h4 className="font-semibold text-slate-800 dark:text-white text-base">{t.languageTitle}</h4>
+            <p className="text-xs text-slate-500">{t.languageSubtitle}</p>
+          </div>
+        </div>
+
+        <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
+          <button
+            type="button"
+            onClick={() => setLanguage('id')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              language === 'id'
+                ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            Bahasa Indonesia
+          </button>
+          <button
+            type="button"
+            onClick={() => setLanguage('en')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              language === 'en'
+                ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            English
+          </button>
+        </div>
+      </div>
+
       {/* Tema */}
       <div className={`${card} flex items-center justify-between`}>
         <div className="flex items-center gap-3">
@@ -141,8 +181,8 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
             {isDarkMode ? <Moon size={22} /> : <Sun size={22} />}
           </div>
           <div>
-            <h4 className="font-semibold text-slate-800 dark:text-white text-base">Mode Gelap (Dark Mode)</h4>
-            <p className="text-xs text-slate-500">Ubah tema tampilan antara gelap dan terang</p>
+            <h4 className="font-semibold text-slate-800 dark:text-white text-base">{t.themeTitle}</h4>
+            <p className="text-xs text-slate-500">{t.themeSubtitle}</p>
           </div>
         </div>
 
@@ -150,7 +190,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
           onClick={onToggleDarkMode}
           role="switch"
           aria-checked={isDarkMode}
-          aria-label="Mode gelap"
+          aria-label={t.themeTitle}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
             isDarkMode ? 'bg-indigo-600' : 'bg-slate-300'
           }`}

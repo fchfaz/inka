@@ -5,6 +5,7 @@ import type { Flashcard as FlashcardType } from '../types/flashcard';
 import { isSpeechSupported } from '../services/tts';
 import { toSpeechText } from '../services/richText';
 import { RichText } from './RichText';
+import { useTranslation } from '../context/LanguageContext';
 
 interface FlashcardProps {
   card: FlashcardType;
@@ -21,6 +22,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
   disableAnimation = false,
   onSpeak,
 }) => {
+  const { t } = useTranslation();
   const canSpeak = !!onSpeak && isSpeechSupported();
   const speakButton = (text: string, size = 'w-4 h-4') =>
     canSpeak && toSpeechText(text) ? (
@@ -59,7 +61,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
           <div className="flex items-center justify-between w-full">
             <div>{speakButton(card.front)}</div>
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300">
-              Front
+              {t.badgeFront}
             </span>
           </div>
 
@@ -81,7 +83,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
           <div className="flex items-center justify-between w-full pb-1">
             <div>{speakButton(card.example_jp || card.front)}</div>
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950/70 dark:text-sky-300">
-              Back
+              {t.badgeBack}
             </span>
           </div>
 
@@ -101,7 +103,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
             {card.meaning && (
               <div>
                 <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-1">
-                  ARTI
+                  {t.meaningLabel}
                 </p>
                 <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                   <RichText text={card.meaning} />
@@ -115,7 +117,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                 <div className="w-full border-t border-slate-100 dark:border-slate-800/80" />
                 <div className="space-y-1">
                   <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">
-                    CONTOH PENGGUNAAN
+                    {t.exampleUsageLabel}
                   </p>
                   <p className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100 font-japanese">
                     <RichText text={card.example_jp} />

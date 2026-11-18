@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '../context/LanguageContext';
 import type { Deck, Flashcard } from '../types/flashcard';
 import {
   getAllDecks,
@@ -64,6 +65,7 @@ interface DeckManagerProps {
 }
 
 export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectDeck }) => {
+  const { t } = useTranslation();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(currentDeck);
   const [cards, setCards] = useState<Flashcard[]>([]);
@@ -334,9 +336,9 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
       {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Pengelolaan Flashcard</h2>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{t.deckManagerTitle}</h2>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Kelola kumpulan deck, tambah/edit kosakata manual, atau edit langsung via JSON.
+            {t.deckManagerSubtitle}
           </p>
         </div>
 
@@ -345,25 +347,25 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
             onClick={() => setIsCreatingDeck(true)}
             className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-xl text-xs sm:text-sm font-medium transition"
           >
-            <FolderPlus size={16} /> Deck Baru
+            <FolderPlus size={16} /> {t.newDeckBtn}
           </button>
           <button
             onClick={handleOpenJsonEditor}
             className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs sm:text-sm font-medium hover:bg-indigo-100 transition"
           >
-            <Code size={16} /> JSON Editor
+            <Code size={16} /> {t.jsonEditorBtn}
           </button>
           <button
             onClick={handleExportJSON}
             className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs sm:text-sm font-medium hover:bg-slate-200 transition"
           >
-            <Download size={16} /> Export
+            <Download size={16} /> {t.exportJsonBtn}
           </button>
           <label
             data-sfx="file"
             className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs sm:text-sm font-medium hover:bg-slate-200 transition cursor-pointer"
           >
-            <Upload size={16} /> Import JSON
+            <Upload size={16} /> {t.importJsonBtn}
             <input type="file" accept=".json" onChange={handleImportFile} className="hidden" />
           </label>
           <label
