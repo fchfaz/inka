@@ -44,7 +44,8 @@ export const Flashcard: React.FC<FlashcardProps> = ({
   return (
     <div
       onClick={onFlip}
-      className="w-full max-w-xl aspect-[1.6/1] sm:h-[340px] cursor-pointer select-none perspective-1000 group my-2"
+      className="w-full max-w-xl aspect-[1.6/1] sm:h-[340px] cursor-pointer select-none perspective-1000 group my-2 notranslate"
+      translate="no"
     >
       <motion.div
         className="w-full h-full relative transform-style-3d shadow-xl rounded-2xl"

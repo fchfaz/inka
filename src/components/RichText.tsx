@@ -62,5 +62,9 @@ function renderNodes(nodes: RichNode[], prefix = ''): React.ReactNode[] {
 export const RichText: React.FC<{ text: string | undefined; className?: string }> = ({ text, className }) => {
   const nodes = useMemo(() => parseRich(text ?? ''), [text]);
   if (!text) return null;
-  return <span className={className}>{renderNodes(nodes)}</span>;
+  return (
+    <span className={`notranslate ${className ?? ''}`} translate="no">
+      {renderNodes(nodes)}
+    </span>
+  );
 };
