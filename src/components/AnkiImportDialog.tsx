@@ -138,7 +138,15 @@ export const AnkiImportDialog: React.FC<{ onClose: () => void; onDone: () => voi
           <label data-sfx="file" className="block border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-8 text-center cursor-pointer hover:border-indigo-400">
             <p className="font-semibold">Pilih berkas .apkg atau .colpkg</p>
             <p className="text-xs text-slate-500 mt-1">Diekspor dari Anki lewat Berkas → Ekspor. Dibaca di perangkat ini; tidak ada yang diunggah.</p>
-            <input type="file" accept=".apkg,.colpkg,application/zip" className="hidden" onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = ''; }} />
+            <input
+              type="file"
+              accept=".apkg,.colpkg,application/zip,application/x-zip-compressed,application/octet-stream,*/*"
+              className="hidden"
+              onChange={(e) => {
+                void onFile(e.target.files?.[0]);
+                e.target.value = '';
+              }}
+            />
           </label>
         )}
 
