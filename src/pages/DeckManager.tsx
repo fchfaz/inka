@@ -11,8 +11,15 @@ import {
 import {
   exportRecallioBundle,
   importRecallioBundle,
+  importCardsFromText,
   validateRecallioBundle,
+  downloadJson,
+  type ImportResult,
 } from '../services/importExport';
+import { cardState } from '../services/srs';
+import { toPlainText } from '../services/richText';
+import { addMediaFile, MediaStorageError } from '../services/media';
+import { AnkiImportDialog } from '../components/AnkiImportDialog';
 import {
   Plus,
   Trash2,
@@ -25,7 +32,31 @@ import {
   AlertTriangle,
   FolderPlus,
   BookOpen,
+  Pause,
+  Play,
+  FileSpreadsheet,
+  FileArchive,
+  Paperclip,
 } from 'lucide-react';
+
+function summarizeImport(r: ImportResult): string {
+  const parts = [`${r.cardsAdded} kartu ditambah`];
+  if (r.cardsUpdated) parts.push(`${r.cardsUpdated} diperbarui`);
+  if (r.cardsSkipped) parts.push(`${r.cardsSkipped} dilewati (sudah ada)`);
+  if (r.decksCreated) parts.push(`${r.decksCreated} deck baru`);
+  return parts.join(', ') + '.';
+}
+
+const STATE_LABEL = ['Baru', 'Belajar', 'Review', 'Ulang'];
+
+function formatDue(due: number): string {
+  const diff = due - Date.now();
+  if (diff <= 0) return 'sekarang';
+  const days = Math.round(diff / 86400000);
+  if (days >= 1) return `${days} hari`;
+  const hours = Math.round(diff / 3600000);
+  return hours >= 1 ? `${hours} jam` : `${Math.max(Math.round(diff / 60000), 1)} mnt`;
+}
 
 interface DeckManagerProps {
   currentDeck: Deck | null;
@@ -55,6 +86,8 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
   useEffect(() => {
     refreshDecks();
   }, []);
+
+  const [showAnkiImport, setShowAnkiImport] = useState(false);
 
   const refreshDecks = async () => {
     const list = await getAllDecks();
@@ -153,8 +186,8 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
     e.preventDefault();
     if (!selectedDeck) return;
 
-    if (!cardFormData.front || !cardFormData.back || !cardFormData.meaning) {
-      alert('Isi minimal kolom Depan (Kanji), Belakang (Hiragana), dan Arti.');
+    if (!cardFormData.front || !cardFormData.front.trim()) {
+      alert('Kolom Depan wajib diisi.');
       return;
     }
 
@@ -168,60 +201,85 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
       example_hiragana: cardFormData.example_hiragana || '',
       example_id: cardFormData.example_id || '',
       hint: cardFormData.hint || '',
+      ...(cardFormData.extra ? { extra: cardFormData.extra } : {}),
       tags: cardFormData.tags || [],
       createdAt: cardFormData.createdAt || Date.now(),
+      // Pertahankan progres belajar saat kartu diedit
+      srs: cardFormData.srs,
+      suspended: cardFormData.suspended,
+      buriedUntil: cardFormData.buriedUntil,
     };
 
     await saveCard(cardToSave);
     setIsEditingCard(false);
     await refreshCards(selectedDeck.id);
-    notify(`Kartu "${cardToSave.front}" disimpan.`);
+    notify(`Kartu "${toPlainText(cardToSave.front)}" disimpan.`);
   };
 
   const handleDeleteCard = async (card: Flashcard) => {
-    if (confirm(`Hapus kartu "${card.front}"?`)) {
+    if (confirm(`Hapus kartu "${toPlainText(card.front)}"?`)) {
       await deleteCard(card.id);
       if (selectedDeck) {
         await refreshCards(selectedDeck.id);
       }
-      notify(`Kartu "${card.front}" dihapus.`);
+      notify(`Kartu "${toPlainText(card.front)}" dihapus.`);
     }
   };
 
-  // Export JSON
+  // Export JSON (isi kartu saja; untuk backup lengkap gunakan menu Pengaturan)
   const handleExportJSON = async () => {
     const bundle = await exportRecallioBundle();
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(bundle, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `inka-decks-${new Date().toISOString().slice(0, 10)}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    downloadJson(`inka-decks-${new Date().toISOString().slice(0, 10)}.json`, bundle);
     notify('Daftar flashcard berhasil diekspor ke JSON.');
   };
 
   // Import JSON File
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
     const fileReader = new FileReader();
-    if (e.target.files && e.target.files[0]) {
-      fileReader.readAsText(e.target.files[0], 'UTF-8');
-      fileReader.onload = async (event) => {
-        try {
-          const parsed = JSON.parse(event.target?.result as string);
-          const validation = validateRecallioBundle(parsed);
-          if (!validation.valid || !validation.data) {
-            alert(`Format JSON tidak valid: ${validation.error}`);
-            return;
-          }
-          const res = await importRecallioBundle(validation.data);
-          await refreshDecks();
-          notify(`Berhasil mengimpor ${res.decksImported} deck & ${res.cardsImported} kartu!`);
-        } catch (err: any) {
-          alert(`Gagal membaca file JSON: ${err.message}`);
+    fileReader.onload = async (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        const validation = validateRecallioBundle(parsed);
+        if (!validation.valid || !validation.data) {
+          alert(`Format JSON tidak valid: ${validation.error}`);
+          return;
         }
-      };
-    }
+        const res = await importRecallioBundle(validation.data);
+        await refreshDecks();
+        if (selectedDeck) await refreshCards(selectedDeck.id);
+        notify(`Impor selesai: ${summarizeImport(res)}`);
+      } catch (err) {
+        alert(`Gagal membaca file JSON: ${(err as Error).message}`);
+      }
+    };
+    fileReader.readAsText(file, 'UTF-8');
+  };
+
+  // Import CSV/TSV (termasuk ekspor teks Anki) ke deck yang sedang dipilih
+  const handleImportText = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !selectedDeck) return;
+    const deckId = selectedDeck.id;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const res = await importCardsFromText(String(event.target?.result ?? ''), deckId);
+        await refreshCards(deckId);
+        notify(`Impor CSV: ${summarizeImport(res)}`);
+      } catch (err) {
+        alert(`Gagal mengimpor: ${(err as Error).message}`);
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  const handleToggleSuspend = async (card: Flashcard) => {
+    await saveCard({ ...card, suspended: !card.suspended });
+    if (selectedDeck) await refreshCards(selectedDeck.id);
   };
 
   // Open JSON Direct Editor
@@ -241,10 +299,11 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
         return;
       }
 
-      await importRecallioBundle(validation.data);
+      const res = await importRecallioBundle(validation.data);
       await refreshDecks();
+      if (selectedDeck) await refreshCards(selectedDeck.id);
       setIsJsonEditorOpen(false);
-      notify('JSON bundle berhasil disimpan dan diterapkan!');
+      notify(`JSON diterapkan: ${summarizeImport(res)}`);
     } catch (err: any) {
       setJsonError(`Syntax Error: ${err.message}`);
     }
@@ -253,10 +312,9 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
   // Filter cards
   const filteredCards = cards.filter((card) => {
     const matchesSearch =
-      card.front.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      card.back.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      card.meaning.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      card.example_jp.toLowerCase().includes(searchQuery.toLowerCase());
+      [card.front, card.back, card.meaning, card.example_jp, card.extra ?? '']
+        .map((f) => toPlainText(f).toLowerCase())
+        .some((f) => f.includes(searchQuery.toLowerCase()));
 
     const matchesTag = selectedTag === 'all' || (card.tags && card.tags.includes(selectedTag));
 
@@ -301,10 +359,31 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
           >
             <Download size={16} /> Export
           </button>
-          <label className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs sm:text-sm font-medium hover:bg-slate-200 transition cursor-pointer">
+          <label
+            data-sfx="file"
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs sm:text-sm font-medium hover:bg-slate-200 transition cursor-pointer"
+          >
             <Upload size={16} /> Import JSON
             <input type="file" accept=".json" onChange={handleImportFile} className="hidden" />
           </label>
+          <label
+            data-sfx="file"
+            className={`flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs sm:text-sm font-medium transition ${
+              selectedDeck ? 'hover:bg-slate-200 cursor-pointer' : 'opacity-40 pointer-events-none'
+            }`}
+            title="Kolom: depan, belakang, arti, contoh JP, contoh hiragana, terjemahan, hint, tag"
+          >
+            <FileSpreadsheet size={16} /> Import CSV/TXT
+            <input type="file" accept=".csv,.tsv,.txt,text/plain,text/csv" onChange={handleImportText} className="hidden" />
+          </label>
+          <button
+            type="button"
+            data-sfx="file"
+            onClick={() => setShowAnkiImport(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs sm:text-sm font-medium hover:bg-indigo-100 transition"
+          >
+            <FileArchive size={16} /> Import Anki (.apkg)
+          </button>
         </div>
       </div>
 
@@ -394,6 +473,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
                     <th className="py-3 px-4">Belakang (Hiragana)</th>
                     <th className="py-3 px-4">Arti</th>
                     <th className="py-3 px-4">Contoh Kalimat</th>
+                    <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4">Tags</th>
                     <th className="py-3 px-4 text-right">Aksi</th>
                   </tr>
@@ -402,15 +482,27 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
                   {filteredCards.map((card) => (
                     <tr key={card.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition">
                       <td className="py-3 px-4 font-bold text-slate-900 dark:text-white text-base">
-                        {card.front}
+                        {toPlainText(card.front)}
                       </td>
-                      <td className="py-3 px-4 font-medium">{card.back}</td>
+                      <td className="py-3 px-4 font-medium">{toPlainText(card.back)}</td>
                       <td className="py-3 px-4 font-semibold text-slate-900 dark:text-slate-200">
-                        {card.meaning}
+                        {toPlainText(card.meaning)}
                       </td>
-                      <td className="py-3 px-4 text-xs max-w-xs truncate" title={card.example_jp}>
-                        <div className="font-japanese font-medium text-slate-800 dark:text-slate-200">{card.example_jp}</div>
-                        <div className="text-slate-400">{card.example_id}</div>
+                      <td className="py-3 px-4 text-xs max-w-xs truncate" title={toPlainText(card.example_jp)}>
+                        <div className="font-japanese font-medium text-slate-800 dark:text-slate-200">{toPlainText(card.example_jp)}</div>
+                        <div className="text-slate-400">{toPlainText(card.example_id)}</div>
+                      </td>
+                      <td className="py-3 px-4 text-xs whitespace-nowrap">
+                        {card.suspended ? (
+                          <span className="text-amber-600 dark:text-amber-400 font-semibold">Ditangguhkan</span>
+                        ) : (
+                          <>
+                            <span className="font-semibold">{STATE_LABEL[cardState(card)]}</span>
+                            {card.srs && card.srs.state !== 0 && (
+                              <span className="text-slate-400"> · {formatDue(card.srs.due)}</span>
+                            )}
+                          </>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex gap-1 flex-wrap">
@@ -423,6 +515,14 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleToggleSuspend(card)}
+                            className="p-1.5 text-slate-500 hover:text-amber-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                            title={card.suspended ? 'Aktifkan kembali' : 'Tangguhkan'}
+                            aria-label={card.suspended ? 'Aktifkan kembali kartu' : 'Tangguhkan kartu'}
+                          >
+                            {card.suspended ? <Play size={16} /> : <Pause size={16} />}
+                          </button>
                           <button
                             onClick={() => handleOpenEditCard(card)}
                             className="p-1.5 text-slate-500 hover:text-indigo-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -523,11 +623,10 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                    Back / Hiragana *
+                    Back / Hiragana
                   </label>
                   <input
                     type="text"
-                    required
                     placeholder="Contoh: みず"
                     value={cardFormData.back || ''}
                     onChange={(e) => setCardFormData({ ...cardFormData, back: e.target.value })}
@@ -538,11 +637,10 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Arti Bahasa Indonesia *
+                  Arti Bahasa Indonesia
                 </label>
                 <input
                   type="text"
-                  required
                   placeholder="Contoh: Air"
                   value={cardFormData.meaning || ''}
                   onChange={(e) => setCardFormData({ ...cardFormData, meaning: e.target.value })}
@@ -552,11 +650,11 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Contoh Kalimat Jepang (example_jp) *
+                  Contoh Kalimat Jepang (opsional)
                 </label>
                 <input
                   type="text"
-                  required
+                  
                   placeholder="Contoh: 水を飲みます。"
                   value={cardFormData.example_jp || ''}
                   onChange={(e) => setCardFormData({ ...cardFormData, example_jp: e.target.value })}
@@ -567,11 +665,11 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                    Hiragana Contoh Kalimat *
+                    Hiragana Contoh Kalimat
                   </label>
                   <input
                     type="text"
-                    required
+                    
                     placeholder="Contoh: みずを のみます。"
                     value={cardFormData.example_hiragana || ''}
                     onChange={(e) =>
@@ -582,17 +680,61 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                    Terjemahan Contoh Kalimat *
+                    Terjemahan Contoh Kalimat
                   </label>
                   <input
                     type="text"
-                    required
+                    
                     placeholder="Contoh: Saya minum air."
                     value={cardFormData.example_id || ''}
                     onChange={(e) => setCardFormData({ ...cardFormData, example_id: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                  Hint (opsional, tampil di sisi depan)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: kata benda, cairan"
+                  value={cardFormData.hint || ''}
+                  onChange={(e) => setCardFormData({ ...cardFormData, hint: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                  Catatan / media tambahan (opsional, tampil di sisi belakang)
+                </label>
+                <textarea
+                  rows={2}
+                  value={cardFormData.extra || ''}
+                  onChange={(e) => setCardFormData({ ...cardFormData, extra: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                />
+                <label data-sfx="file" className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs cursor-pointer hover:bg-slate-200">
+                  <Paperclip size={14} /> Lampirkan gambar / audio / video
+                  <input
+                    type="file"
+                    accept="image/*,audio/*,video/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = '';
+                      if (!file) return;
+                      try {
+                        const token = await addMediaFile(file);
+                        setCardFormData((d) => ({ ...d, extra: d.extra ? `${d.extra} ${token}` : token }));
+                      } catch (err) {
+                        alert(err instanceof MediaStorageError ? err.message : `Gagal melampirkan: ${(err as Error).message}`);
+                      }
+                    }}
+                  />
+                </label>
               </div>
 
               <div>
@@ -644,7 +786,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
               <div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">Direct JSON Editor</h3>
                 <p className="text-xs text-slate-500">
-                  Format: recallio.deck-bundle (v1). Edit seluruh daftar flashcard dan deck sekaligus.
+                  Format: recallio.deck-bundle (v1). Kartu dengan \"id\" yang sama diperbarui di tempat (progres belajar tetap); kartu tanpa id ditambahkan. Menghapus kartu dari JSON tidak menghapusnya dari database.
                 </p>
               </div>
               <button
@@ -673,7 +815,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
 
             <div className="flex items-center justify-between pt-2">
               <span className="text-xs text-slate-400">
-                Data akan diverifikasi sebelum disimpan ke IndexedDB.
+                Data diverifikasi dan disimpan dalam satu transaksi.
               </span>
               <div className="flex gap-2">
                 <button
@@ -694,6 +836,14 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
             </div>
           </div>
         </div>
+      )}
+      {showAnkiImport && (
+        <AnkiImportDialog
+          onClose={() => setShowAnkiImport(false)}
+          onDone={() => {
+            void refreshDecks().then(() => selectedDeck && refreshCards(selectedDeck.id));
+          }}
+        />
       )}
     </div>
   );

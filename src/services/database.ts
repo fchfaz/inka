@@ -1,10 +1,36 @@
 import { openDB, type IDBPDatabase } from 'idb';
-import type { Deck, Flashcard, ScheduledInterval, ReviewLog } from '../types/flashcard';
+import type { Deck, Flashcard, ReviewLog, StudySettings } from '../types/flashcard';
+import { DEFAULT_SETTINGS } from '../types/flashcard';
+import { answerCard } from './srs';
+import { configureSfx } from './sfx';
 
+// Nama database tetap 'recallio_db' agar data pengguna lama tidak hilang.
 const DB_NAME = 'recallio_db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
-export async function getDB(): Promise<IDBPDatabase> {
+let dbPromise: Promise<IDBPDatabase> | null = null;
+
+/** Koneksi dibuka sekali lalu dipakai ulang. */
+export function getDB(): Promise<IDBPDatabase> {
+  if (!dbPromise) {
+    dbPromise = openDbInternal().catch((err) => {
+      dbPromise = null;
+      throw err;
+    });
+  }
+  return dbPromise;
+}
+
+/** Hanya untuk pengujian: tutup dan lupakan koneksi. */
+export async function resetDBConnection(): Promise<void> {
+  if (dbPromise) {
+    const db = await dbPromise;
+    db.close();
+    dbPromise = null;
+  }
+}
+
+function openDbInternal(): Promise<IDBPDatabase> {
   return openDB(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
@@ -35,6 +61,13 @@ export async function getDB(): Promise<IDBPDatabase> {
           revStore.createIndex('by-deck', 'deckId');
           revStore.createIndex('by-card', 'cardId');
           revStore.createIndex('by-studyDay', 'studyDay');
+        }
+      }
+
+      if (oldVersion < 3) {
+        // Berkas media kartu (gambar/audio/video), kunci = hash isi + ekstensi
+        if (!db.objectStoreNames.contains('media')) {
+          db.createObjectStore('media', { keyPath: 'key' });
         }
       }
     },
@@ -158,15 +191,24 @@ export async function saveDeck(deck: Deck): Promise<void> {
 
 export async function deleteDeck(deckId: string): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction(['decks', 'cards', 'schedules'], 'readwrite');
+  const tx = db.transaction(['decks', 'cards', 'schedules', 'revlog', 'session_state'], 'readwrite');
   await tx.objectStore('decks').delete(deckId);
 
-  // Delete all cards in deck
-  const cards = await tx.objectStore('cards').index('by-deck').getAll(deckId);
+  const cardStore = tx.objectStore('cards');
+  const cards = await cardStore.index('by-deck').getAll(deckId);
   for (const card of cards) {
-    await tx.objectStore('cards').delete(card.id);
+    await cardStore.delete(card.id);
     await tx.objectStore('schedules').delete(card.id);
   }
+
+  // Hapus riwayat review deck ini agar statistik tidak memuat data yatim.
+  let cursor = await tx.objectStore('revlog').index('by-deck').openCursor(deckId);
+  while (cursor) {
+    await cursor.delete();
+    cursor = await cursor.continue();
+  }
+
+  await tx.objectStore('session_state').delete(`counter_${deckId}`);
   await tx.done;
 }
 
@@ -194,90 +236,106 @@ export async function deleteCard(cardId: string): Promise<void> {
   await tx.done;
 }
 
-// Schedule Operations (3, 5, 30, 50 card interval scheduler)
-export async function getSchedules(): Promise<Record<string, ScheduledInterval>> {
-  const db = await getDB();
-  const list: ScheduledInterval[] = await db.getAll('schedules');
-  const map: Record<string, ScheduledInterval> = {};
-  for (const item of list) {
-    map[item.cardId] = item;
-  }
-  return map;
+// ---------------------------------------------------------------------------
+// Hari belajar (batas pergantian hari bisa diatur, default 03:00)
+// ---------------------------------------------------------------------------
+let dayStartHour = DEFAULT_SETTINGS.dayStartHour;
+
+export function setDayStartHour(hour: number): void {
+  dayStartHour = Math.min(Math.max(Math.floor(hour), 0), 23);
 }
 
-export async function saveSchedule(schedule: ScheduledInterval): Promise<void> {
-  const db = await getDB();
-  await db.put('schedules', schedule);
+export function getDayStartHour(): number {
+  return dayStartHour;
 }
 
-export async function removeSchedule(cardId: string): Promise<void> {
-  const db = await getDB();
-  await db.delete('schedules', cardId);
-}
-
-export async function getSessionCounter(deckId: string): Promise<number> {
-  const db = await getDB();
-  const count = await db.get('session_state', `counter_${deckId}`);
-  return count ? Number(count) : 0;
-}
-
-export async function saveSessionCounter(deckId: string, counter: number): Promise<void> {
-  const db = await getDB();
-  await db.put('session_state', counter, `counter_${deckId}`);
-}
-
-/**
- * Formats a timestamp/date into 'YYYY-MM-DD' with 03:00 AM day boundary cutoff.
- */
+/** Format 'YYYY-MM-DD' dengan batas pergantian hari sesuai pengaturan. */
 export function getStudyDayString(date = new Date()): string {
-  const adjusted = new Date(date.getTime() - 3 * 60 * 60 * 1000);
+  const adjusted = new Date(date.getTime() - dayStartHour * 60 * 60 * 1000);
   const y = adjusted.getFullYear();
   const m = String(adjusted.getMonth() + 1).padStart(2, '0');
   const d = String(adjusted.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 
-/**
- * Calculates current "study day key" that resets at 03:00 AM every day.
- * Example: If now is Nov 8 at 02:30 AM -> belongs to Nov 7 study day.
- * If now is Nov 8 at 03:00 AM or 10:00 PM -> belongs to Nov 8 study day.
- */
-export function getDailyStudyKey(date = new Date()): string {
-  return `daily_studied_${getStudyDayString(date)}`;
+// ---------------------------------------------------------------------------
+// Pengaturan
+// ---------------------------------------------------------------------------
+export async function getSettings(): Promise<StudySettings> {
+  const db = await getDB();
+  const stored = (await db.get('session_state', 'settings')) as Partial<StudySettings> | undefined;
+  const settings: StudySettings = { ...DEFAULT_SETTINGS, ...(stored ?? {}) };
+  setDayStartHour(settings.dayStartHour);
+  configureSfx({ enabled: settings.soundEnabled, volume: settings.soundVolume });
+  return settings;
 }
 
+export async function saveSettings(settings: StudySettings): Promise<void> {
+  const db = await getDB();
+  await db.put('session_state', settings, 'settings');
+  setDayStartHour(settings.dayStartHour);
+  configureSfx({ enabled: settings.soundEnabled, volume: settings.soundVolume });
+}
+
+// ---------------------------------------------------------------------------
+// Review log
+// ---------------------------------------------------------------------------
 export async function getDailyStudiedCount(): Promise<number> {
   const db = await getDB();
-  const key = getDailyStudyKey();
-  const count = await db.get('session_state', key);
-  return count ? Number(count) : 0;
+  return db.countFromIndex('revlog', 'by-studyDay', getStudyDayString());
 }
 
-export async function incrementDailyStudiedCount(): Promise<number> {
+export async function getReviewLogsForDay(studyDay: string, deckId?: string): Promise<ReviewLog[]> {
   const db = await getDB();
-  const key = getDailyStudyKey();
-  const current = (await db.get('session_state', key)) || 0;
-  const next = Number(current) + 1;
-  await db.put('session_state', next, key);
-  return next;
+  const logs: ReviewLog[] = await db.getAllFromIndex('revlog', 'by-studyDay', studyDay);
+  return deckId ? logs.filter((l) => l.deckId === deckId) : logs;
 }
 
-// Review Log Operations
-export async function addReviewLog(log: Omit<ReviewLog, 'id' | 'studyDay' | 'isFirstReview'>): Promise<ReviewLog> {
-  const db = await getDB();
-  const studyDay = getStudyDayString(new Date(log.ts));
+export type NewReviewLog = Omit<ReviewLog, 'id' | 'studyDay' | 'isFirstReview'>;
 
-  // Determine if this is the first review for this card
-  const existingCount = await db.countFromIndex('revlog', 'by-card', log.cardId);
-  const isFirstReview = existingCount === 0;
+/**
+ * Simpan kartu yang sudah dijadwalkan ulang beserta log-nya dalam satu transaksi,
+ * sehingga keduanya selalu konsisten walau aplikasi tertutup di tengah jalan.
+ */
+export async function saveCardWithLog(card: Flashcard, log: NewReviewLog): Promise<ReviewLog> {
+  const db = await getDB();
+  const tx = db.transaction(['cards', 'revlog'], 'readwrite');
+  const revStore = tx.objectStore('revlog');
+  const existingCount = await revStore.index('by-card').count(log.cardId);
 
   const fullLog: ReviewLog = {
     ...log,
-    studyDay,
-    isFirstReview,
-    durationMs: Math.min(Math.max(log.durationMs, 0), 60000), // Bound 0 - 60s
+    studyDay: getStudyDayString(new Date(log.ts)),
+    isFirstReview: existingCount === 0,
+    durationMs: Math.min(Math.max(log.durationMs, 0), 60000),
   };
+  await tx.objectStore('cards').put(card);
+  const id = await revStore.add(fullLog);
+  await tx.done;
+  fullLog.id = Number(id);
+  return fullLog;
+}
 
+/** Batalkan satu jawaban: kembalikan kartu ke keadaan sebelumnya dan hapus log-nya. */
+export async function undoReview(previousCard: Flashcard, logId: number | undefined): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(['cards', 'revlog'], 'readwrite');
+  await tx.objectStore('cards').put(previousCard);
+  if (logId !== undefined) await tx.objectStore('revlog').delete(logId);
+  await tx.done;
+}
+
+/** Tambah log lepas (dipakai seed data dan pengujian). */
+export async function addReviewLog(log: NewReviewLog): Promise<ReviewLog> {
+  const db = await getDB();
+  const studyDay = getStudyDayString(new Date(log.ts));
+  const existingCount = await db.countFromIndex('revlog', 'by-card', log.cardId);
+  const fullLog: ReviewLog = {
+    ...log,
+    studyDay,
+    isFirstReview: existingCount === 0,
+    durationMs: Math.min(Math.max(log.durationMs, 0), 60000),
+  };
   const id = await db.add('revlog', fullLog);
   fullLog.id = Number(id);
   return fullLog;
@@ -345,7 +403,7 @@ export async function seedDummyReviewLogs(targetDeckId: string, cards: Flashcard
       else if (rateRoll < 0.8) rating = 3;
       else rating = 4;
 
-      const intervals: Record<number, 3 | 5 | 30 | 50> = { 1: 3, 2: 5, 3: 30, 4: 50 };
+      const days: Record<number, number> = { 1: 0, 2: 1, 3: 4, 4: 10 };
       const durationMs = Math.floor(2000 + Math.random() * 7000); // 2 - 9 seconds
 
       const logItem: ReviewLog = {
@@ -354,7 +412,7 @@ export async function seedDummyReviewLogs(targetDeckId: string, cards: Flashcard
         ts: reviewTs,
         studyDay: getStudyDayString(new Date(reviewTs)),
         rating,
-        interval: intervals[rating],
+        scheduledDays: days[rating],
         durationMs,
         isFirstReview: d > 60 && Math.random() < 0.4,
       };
@@ -366,4 +424,54 @@ export async function seedDummyReviewLogs(targetDeckId: string, cards: Flashcard
 
   await tx.done;
   return seeded;
+}
+
+// ---------------------------------------------------------------------------
+// Migrasi dari penjadwal "interval kartu" lama ke FSRS
+// ---------------------------------------------------------------------------
+const MIGRATION_FLAG = 'migrated_fsrs_v1';
+
+/**
+ * Hitung ulang status FSRS tiap kartu dengan memutar ulang riwayat review lamanya,
+ * lalu buang data jadwal berbasis hitungan kartu. Hanya berjalan sekali.
+ */
+export async function migrateLegacyProgress(settings: StudySettings = DEFAULT_SETTINGS): Promise<number> {
+  const db = await getDB();
+  if (await db.get('session_state', MIGRATION_FLAG)) return 0;
+
+  const logs: ReviewLog[] = await db.getAll('revlog');
+  const byCard = new Map<string, ReviewLog[]>();
+  for (const l of logs) {
+    const list = byCard.get(l.cardId);
+    if (list) list.push(l);
+    else byCard.set(l.cardId, [l]);
+  }
+
+  const noLeech: StudySettings = { ...settings, leechThreshold: 0 };
+  const tx = db.transaction(['cards', 'schedules', 'session_state'], 'readwrite');
+  const cardStore = tx.objectStore('cards');
+  let migrated = 0;
+
+  for (const [cardId, list] of byCard) {
+    const card: Flashcard | undefined = await cardStore.get(cardId);
+    if (!card || card.srs) continue;
+    list.sort((a, b) => a.ts - b.ts);
+    let replayed: Flashcard = card;
+    for (const l of list) {
+      replayed = answerCard(replayed, l.rating, noLeech, new Date(l.ts)).card;
+    }
+    await cardStore.put(replayed);
+    migrated++;
+  }
+
+  await tx.objectStore('schedules').clear();
+  const keys = await tx.objectStore('session_state').getAllKeys();
+  for (const k of keys) {
+    if (typeof k === 'string' && (k.startsWith('counter_') || k.startsWith('daily_studied_'))) {
+      await tx.objectStore('session_state').delete(k);
+    }
+  }
+  await tx.objectStore('session_state').put(true, MIGRATION_FLAG);
+  await tx.done;
+  return migrated;
 }

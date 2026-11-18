@@ -5,13 +5,27 @@ export interface AnkiParsedNote {
   tags: string[];
 }
 
+const HTML_BREAK = /<br\s*\/?>/gi;
+const HTML_TAG = /<[^>]*>/g;
+
+function stripHtml(value: string): string {
+  return value
+    .replace(HTML_BREAK, ' ')
+    .replace(HTML_TAG, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .trim();
+}
+
 /**
- * Standardized parser interface for Anki .apkg files.
- * Maps field positions typical in Japanese decks (Expression, Reading, Meaning, Example sentences)
- * into Recallio format.
+ * Petakan baris teks Anki (urutan kolom: Expression, Reading, Meaning, Example JP,
+ * Example reading, Example translation, Hint) ke format kartu Inka.
  */
 export function convertAnkiNoteToRecallioCard(note: AnkiParsedNote): RecallioBundleCard {
-  const f = note.fields.map(field => field.replace(/<[^>]*>?/gm, '').trim());
+  const f = note.fields.map(stripHtml);
 
   return {
     front: f[0] || 'N/A',
@@ -24,4 +38,3 @@ export function convertAnkiNoteToRecallioCard(note: AnkiParsedNote): RecallioBun
     tags: note.tags,
   };
 }
-

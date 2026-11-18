@@ -1,59 +1,41 @@
 import React from 'react';
+import type { ReviewRating } from '../types/flashcard';
+import { playSfx, type SfxName } from '../services/sfx';
+
+const RATING_SFX: Record<ReviewRating, SfxName> = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
 
 interface ReviewButtonsProps {
-  onSelectInterval: (interval: 3 | 5 | 30 | 50) => void;
+  onAnswer: (rating: ReviewRating) => void;
+  /** Interval berikutnya per tombol, mis. { 1: '1m', 2: '6m', 3: '10m', 4: '4h' }. */
+  intervals: Record<ReviewRating, string> | null;
   disabled?: boolean;
 }
 
-export const ReviewButtons: React.FC<ReviewButtonsProps> = ({ onSelectInterval, disabled }) => {
-  const buttons: Array<{
-    interval: 3 | 5 | 30 | 50;
-    label: string;
-    bgColor: string;
-    hoverColor: string;
-    activeColor: string;
-  }> = [
-    {
-      interval: 3,
-      label: 'Again',
-      bgColor: 'bg-[#ef4444]', // Merah
-      hoverColor: 'hover:bg-red-600',
-      activeColor: 'active:bg-red-700',
-    },
-    {
-      interval: 5,
-      label: 'Hard',
-      bgColor: 'bg-[#6b7280]', // Abu-abu
-      hoverColor: 'hover:bg-gray-600',
-      activeColor: 'active:bg-gray-700',
-    },
-    {
-      interval: 30,
-      label: 'Good',
-      bgColor: 'bg-[#10b981]', // Hijau
-      hoverColor: 'hover:bg-emerald-600',
-      activeColor: 'active:bg-emerald-700',
-    },
-    {
-      interval: 50,
-      label: 'Easy',
-      bgColor: 'bg-[#2563eb]', // Biru
-      hoverColor: 'hover:bg-blue-600',
-      activeColor: 'active:bg-blue-700',
-    },
-  ];
+const BUTTONS: Array<{ rating: ReviewRating; label: string; className: string }> = [
+  { rating: 1, label: 'Again', className: 'bg-[#ef4444] hover:bg-red-600 active:bg-red-700' },
+  { rating: 2, label: 'Hard', className: 'bg-[#6b7280] hover:bg-gray-600 active:bg-gray-700' },
+  { rating: 3, label: 'Good', className: 'bg-[#10b981] hover:bg-emerald-600 active:bg-emerald-700' },
+  { rating: 4, label: 'Easy', className: 'bg-[#2563eb] hover:bg-blue-600 active:bg-blue-700' },
+];
 
+export const ReviewButtons: React.FC<ReviewButtonsProps> = ({ onAnswer, intervals, disabled }) => {
   return (
     <div className="w-full max-w-xl mx-auto px-2">
       <div className="grid grid-cols-4 gap-2.5 sm:gap-4">
-        {buttons.map((b) => (
+        {BUTTONS.map((b) => (
           <button
-            key={b.interval}
-            onClick={() => onSelectInterval(b.interval)}
+            key={b.rating}
+            data-sfx="none"
+            onClick={() => {
+              playSfx(RATING_SFX[b.rating]);
+              onAnswer(b.rating);
+            }}
             disabled={disabled}
-            className={`flex items-center justify-center py-3.5 sm:py-4 px-2 rounded-xl text-white font-sans font-semibold text-sm sm:text-base tracking-wide transition-all duration-150 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-98 shadow-md disabled:opacity-40 disabled:pointer-events-none ${b.bgColor} ${b.hoverColor} ${b.activeColor}`}
+            aria-label={`${b.label}${intervals ? `, ulang ${intervals[b.rating]}` : ''} (tombol ${b.rating})`}
+            className={`flex flex-col items-center justify-center py-2.5 sm:py-3 px-2 rounded-xl text-white font-sans font-semibold tracking-wide transition-all duration-150 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-98 shadow-md disabled:opacity-40 disabled:pointer-events-none ${b.className}`}
           >
-            {b.label}
+            <span className="text-[11px] font-medium opacity-90 h-4">{intervals ? intervals[b.rating] : ''}</span>
+            <span className="text-sm sm:text-base">{b.label}</span>
           </button>
         ))}
       </div>

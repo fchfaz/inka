@@ -2,7 +2,8 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Study } from './pages/Study';
 import { DeckManager } from './pages/DeckManager';
 import { Settings } from './pages/Settings';
-import { initializeDefaultDeck, getAllDecks } from './services/database';
+import { initializeDefaultDeck, getAllDecks, getSettings, migrateLegacyProgress } from './services/database';
+import { installSfxListener } from './services/sfx';
 import type { Deck } from './types/flashcard';
 import { BookMarked, FolderKanban, BarChart3, Sliders, Clock } from 'lucide-react';
 
@@ -16,6 +17,9 @@ export function App() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return localStorage.getItem('inka_theme') === 'dark';
   });
+
+  // Efek suara untuk semua tombol (satu listener global)
+  useEffect(() => installSfxListener(), []);
 
   // Apply dark mode class to root HTML
   useEffect(() => {
@@ -31,6 +35,12 @@ export function App() {
   // Init default deck on initial boot
   useEffect(() => {
     async function init() {
+      try {
+        const settings = await getSettings();
+        await migrateLegacyProgress(settings);
+      } catch (err) {
+        console.error('Inisialisasi pengaturan/migrasi gagal:', err);
+      }
       await initializeDefaultDeck();
       const decks = await getAllDecks();
       if (decks.length > 0) {
@@ -61,6 +71,8 @@ export function App() {
           <nav className="flex items-center gap-1">
             <button
               onClick={() => setCurrentPage('study')}
+              aria-label="Belajar"
+              data-sfx="nav"
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
                 currentPage === 'study'
                   ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
@@ -73,6 +85,8 @@ export function App() {
 
             <button
               onClick={() => setCurrentPage('decks')}
+              aria-label="Kelola Deck"
+              data-sfx="nav"
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
                 currentPage === 'decks'
                   ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
@@ -85,6 +99,8 @@ export function App() {
 
             <button
               onClick={() => setCurrentPage('stats')}
+              aria-label="Statistik"
+              data-sfx="nav"
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
                 currentPage === 'stats'
                   ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
@@ -97,6 +113,8 @@ export function App() {
 
             <button
               onClick={() => setCurrentPage('settings')}
+              aria-label="Pengaturan"
+              data-sfx="nav"
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
                 currentPage === 'settings'
                   ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'

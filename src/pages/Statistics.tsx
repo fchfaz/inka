@@ -1,12 +1,11 @@
+import { toPlainText } from '../services/richText';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import type { Deck, Flashcard, ReviewLog, ScheduledInterval } from '../types/flashcard';
+import type { Deck, Flashcard, ReviewLog } from '../types/flashcard';
 import {
   getAllDecks,
   getAllCards,
   getCardsByDeck,
   getAllReviewLogs,
-  getSchedules,
-  getSessionCounter,
   seedDummyReviewLogs,
   clearAllReviewLogs,
 } from '../services/database';
@@ -65,8 +64,6 @@ export const Statistics: React.FC<StatisticsProps> = ({
   const [metricMode, setMetricMode] = useState<'cards' | 'time'>('cards');
   const [logs, setLogs] = useState<ReviewLog[]>([]);
   const [cards, setCards] = useState<Flashcard[]>([]);
-  const [schedules, setSchedules] = useState<Record<string, ScheduledInterval>>({});
-  const [sessionCounter, setSessionCounter] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDeckDropdownOpen, setIsDeckDropdownOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -107,17 +104,13 @@ export const Statistics: React.FC<StatisticsProps> = ({
       setDecks(allDecks);
 
       const targetDeck = selectedDeckId === 'all' ? undefined : selectedDeckId;
-      const [fetchedLogs, fetchedCards, fetchedSchedules, counter] = await Promise.all([
+      const [fetchedLogs, fetchedCards] = await Promise.all([
         getAllReviewLogs(targetDeck),
         targetDeck ? getCardsByDeck(targetDeck) : getAllCards(),
-        getSchedules(),
-        getSessionCounter(targetDeck || (allDecks[0]?.id ?? 'default')),
       ]);
 
       setLogs(fetchedLogs);
       setCards(fetchedCards);
-      setSchedules(fetchedSchedules);
-      setSessionCounter(counter);
     } catch (err) {
       console.error('Failed to load stats data:', err);
     } finally {
@@ -135,8 +128,8 @@ export const Statistics: React.FC<StatisticsProps> = ({
       deckId: selectedDeckId === 'all' ? undefined : selectedDeckId,
       range: timeRange,
     };
-    return calculateStats(logs, cards, schedules, sessionCounter, filter);
-  }, [logs, cards, schedules, sessionCounter, selectedDeckId, timeRange]);
+    return calculateStats(logs, cards, filter);
+  }, [logs, cards, selectedDeckId, timeRange]);
 
   // Dev dummy data seeder
   const handleSeedData = async () => {
@@ -531,21 +524,21 @@ export const Statistics: React.FC<StatisticsProps> = ({
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
                 <ListOrdered className="w-4 h-4 text-violet-500" />
-                Antrean Interval Mendatang
+                Jadwal Review Mendatang
               </h3>
               <p className="text-xs text-slate-500">
-                Kartu yang telah dijadwalkan akan muncul dalam N giliran kartu ke depan.
+                Kartu yang sudah dipelajari dikelompokkan menurut tanggal jatuh temponya (FSRS).
               </p>
             </div>
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300">
-              {stats.futureDue.totalScheduled} aktif
+              {stats.futureDue.totalScheduled} terjadwal
             </span>
           </div>
 
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-xs">
               <span className="font-medium text-rose-800 dark:text-rose-200">
-                Jatuh Tempo (Muncul giliran berikutnya)
+                Jatuh tempo hari ini
               </span>
               <span className="font-bold text-rose-700 dark:text-rose-300 text-sm">
                 {stats.futureDue.dueNow} kartu
@@ -553,24 +546,24 @@ export const Statistics: React.FC<StatisticsProps> = ({
             </div>
 
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-xs">
-              <span className="text-slate-700 dark:text-slate-300">Dalam 1 – 5 kartu berikutnya</span>
-              <span className="font-semibold text-slate-900 dark:text-white">{stats.futureDue.in1to5} kartu</span>
+              <span className="text-slate-700 dark:text-slate-300">Besok</span>
+              <span className="font-semibold text-slate-900 dark:text-white">{stats.futureDue.tomorrow} kartu</span>
             </div>
 
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-xs">
-              <span className="text-slate-700 dark:text-slate-300">Dalam 6 – 30 kartu berikutnya</span>
-              <span className="font-semibold text-slate-900 dark:text-white">{stats.futureDue.in6to30} kartu</span>
+              <span className="text-slate-700 dark:text-slate-300">2 – 7 hari lagi</span>
+              <span className="font-semibold text-slate-900 dark:text-white">{stats.futureDue.in2to7} kartu</span>
             </div>
 
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-xs">
-              <span className="text-slate-700 dark:text-slate-300">Dalam 31 – 50 kartu berikutnya</span>
-              <span className="font-semibold text-slate-900 dark:text-white">{stats.futureDue.in31to50} kartu</span>
+              <span className="text-slate-700 dark:text-slate-300">8 – 30 hari lagi</span>
+              <span className="font-semibold text-slate-900 dark:text-white">{stats.futureDue.in8to30} kartu</span>
             </div>
 
-            {stats.futureDue.beyond50 > 0 && (
+            {stats.futureDue.beyond30 > 0 && (
               <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-xs">
-                <span className="text-slate-700 dark:text-slate-300">Lebih dari 50 kartu</span>
-                <span className="font-semibold text-slate-900 dark:text-white">{stats.futureDue.beyond50} kartu</span>
+                <span className="text-slate-700 dark:text-slate-300">Lebih dari 30 hari</span>
+                <span className="font-semibold text-slate-900 dark:text-white">{stats.futureDue.beyond30} kartu</span>
               </div>
             )}
           </div>
@@ -618,13 +611,13 @@ export const Statistics: React.FC<StatisticsProps> = ({
                     <span className="text-[11px] font-bold text-slate-400 w-4">{idx + 1}.</span>
                     <div className="truncate">
                       <span className="font-japanese text-sm font-bold text-slate-900 dark:text-white mr-2">
-                        {item.card.front}
+                        {toPlainText(item.card.front)}
                       </span>
                       <span className="text-slate-400 font-japanese text-[11px] mr-1.5">
-                        ({item.card.back})
+                        ({toPlainText(item.card.back)})
                       </span>
                       <span className="text-slate-600 dark:text-slate-300 truncate">
-                        {item.card.meaning}
+                        {toPlainText(item.card.meaning)}
                       </span>
                     </div>
                   </div>
@@ -728,10 +721,10 @@ export const Statistics: React.FC<StatisticsProps> = ({
       <div className="p-4 rounded-2xl bg-slate-100/60 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500 space-y-1.5">
         <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
           <Info size={15} className="text-indigo-500" />
-          <span>Catatan Arsitektur Interval Inka</span>
+          <span>Catatan Penjadwalan Inka</span>
         </div>
         <p className="leading-relaxed">
-          Inka menggunakan sistem pengulangan interval kartu dinamis (3, 5, 30, dan 50 kartu berikutnya) yang berbeda dengan sistem hari tetap Anki/SM-2. Metrik kemudahan kartu (Ease) dan interval hari tidak ditampilkan karena data murni berbasis giliran kartu. Statistik akan semakin kaya dan akurat seiring rutinitas belajar Anda.
+          Inka memakai algoritma FSRS: tiap kartu punya tanggal jatuh tempo sendiri yang dihitung dari stability dan difficulty kartu itu. Jadwal mendatang di atas dibaca langsung dari tanggal tersebut. Statistik status kartu dan retensi makin akurat seiring bertambahnya riwayat belajar.
         </p>
 
         {/* Development test tools */}

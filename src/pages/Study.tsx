@@ -1,17 +1,33 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { toPlainText, toSpeechText } from '../services/richText';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Flashcard } from '../components/Flashcard';
-import { ShuffleButton } from '../components/ShuffleButton';
 import { ReviewButtons } from '../components/ReviewButtons';
-import { CardIntervalScheduler } from '../services/scheduler';
 import {
   getCardsByDeck,
   getAllDecks,
   getDailyStudiedCount,
-  incrementDailyStudiedCount,
-  addReviewLog,
+  getReviewLogsForDay,
+  getSettings,
+  getStudyDayString,
+  saveCard,
+  saveCardWithLog,
+  undoReview,
 } from '../services/database';
-import type { Deck, Flashcard as FlashcardType, ReviewRating } from '../types/flashcard';
-import { AlertCircle, RefreshCw, ChevronDown, BookOpen } from 'lucide-react';
+import { answerCard, previewIntervals } from '../services/srs';
+import {
+  buildQueue,
+  countDone,
+  getStudyDayEnd,
+  LEARN_AHEAD_MS,
+  type DoneToday,
+  type QueueCounts,
+  type QueueKind,
+} from '../services/queue';
+import { speak, stopSpeaking } from '../services/tts';
+import { playSfx } from '../services/sfx';
+import { DEFAULT_SETTINGS } from '../types/flashcard';
+import type { Deck, Flashcard as FlashcardType, ReviewRating, StudySettings } from '../types/flashcard';
+import { AlertCircle, RefreshCw, ChevronDown, BookOpen, Undo2, Pause, EyeOff, Volume2, PartyPopper } from 'lucide-react';
 
 interface StudyProps {
   currentDeck: Deck | null;
@@ -19,25 +35,78 @@ interface StudyProps {
   onNavigateToDeckManager: () => void;
 }
 
-export const Study: React.FC<StudyProps> = ({
-  currentDeck,
-  onSelectDeck,
-  onNavigateToDeckManager,
-}) => {
-  const [cards, setCards] = useState<FlashcardType[]>([]);
+type UndoEntry =
+  | { type: 'answer'; prev: FlashcardType; logId: number | undefined; stateBefore: number }
+  | { type: 'edit'; prev: FlashcardType };
+
+interface Current {
+  card: FlashcardType;
+  kind: QueueKind;
+}
+
+const EXTRA_NEW_STEP = 10;
+
+function formatClock(ts: number): string {
+  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavigateToDeckManager }) => {
   const [decks, setDecks] = useState<Deck[]>([]);
-  const [currentCard, setCurrentCard] = useState<FlashcardType | null>(null);
+  const [cardCount, setCardCount] = useState(0);
+  const [settings, setSettings] = useState<StudySettings>(DEFAULT_SETTINGS);
+  const [current, setCurrent] = useState<Current | null>(null);
+  const [counts, setCounts] = useState<QueueCounts>({ newCount: 0, learningCount: 0, reviewCount: 0 });
+  const [nextLearningAt, setNextLearningAt] = useState<number | null>(null);
+  const [newRemaining, setNewRemaining] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [disableAnimation, setDisableAnimation] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeckDropdownOpen, setIsDeckDropdownOpen] = useState(false);
   const [dailyStudiedCount, setDailyStudiedCount] = useState<number>(0);
+  const [undoDepth, setUndoDepth] = useState(0);
+  const [toast, setToast] = useState<string | null>(null);
 
-  const schedulerRef = useRef<CardIntervalScheduler | null>(null);
+  const cardsRef = useRef<FlashcardType[]>([]);
+  const settingsRef = useRef<StudySettings>(DEFAULT_SETTINGS);
+  const doneRef = useRef<DoneToday>({ newDone: 0, reviewsDone: 0 });
+  const extraNewRef = useRef(0);
+  const undoStackRef = useRef<UndoEntry[]>([]);
+  const studyDayRef = useRef<string>(getStudyDayString());
+  const busyRef = useRef(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const cardShownAtRef = useRef<number>(Date.now());
+  const toastTimerRef = useRef<number | null>(null);
 
-  // Close dropdown on outside click
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  /** Hitung ulang antrean dari kartu di memori dan tampilkan kartu berikutnya. */
+  const refreshQueue = useCallback(() => {
+    const now = Date.now();
+    const s = settingsRef.current;
+    const snap = buildQueue(cardsRef.current, {
+      now,
+      studyDay: getStudyDayString(new Date(now)),
+      dayEnd: getStudyDayEnd(now, s.dayStartHour),
+      settings: s,
+      done: doneRef.current,
+      extraNew: extraNewRef.current,
+    });
+    setCounts(snap.counts);
+    setCurrent(snap.next);
+    setNextLearningAt(snap.nextLearningAt);
+    setNewRemaining(
+      cardsRef.current.filter((c) => !c.suspended && (c.srs?.state ?? 0) === 0).length - snap.counts.newCount
+    );
+    setDisableAnimation(true);
+    setIsFlipped(false);
+    cardShownAtRef.current = now;
+  }, []);
+
+  // Tutup dropdown saat klik di luar
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -48,122 +117,244 @@ export const Study: React.FC<StudyProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Load available decks list and daily count, plus periodic check for 03:00 AM reset
   useEffect(() => {
-    async function refreshMeta() {
-      const allDecks = await getAllDecks();
-      setDecks(allDecks);
-      const count = await getDailyStudiedCount();
-      setDailyStudiedCount(count);
-    }
-    refreshMeta();
-
-    // Check every minute or on window focus if 03:00 AM boundary has passed
-    const interval = setInterval(async () => {
-      const count = await getDailyStudiedCount();
-      setDailyStudiedCount(count);
-    }, 60000);
-
-    const onFocus = async () => {
-      const count = await getDailyStudiedCount();
-      setDailyStudiedCount(count);
-    };
-    window.addEventListener('focus', onFocus);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
-    };
+    getAllDecks().then(setDecks);
   }, []);
 
-  // Initialize deck and scheduler
+  // Muat deck, pengaturan, dan progres hari ini
   useEffect(() => {
     let isMounted = true;
 
-    async function loadDeckData() {
+    async function load() {
       if (!currentDeck) {
         setIsLoading(false);
         return;
       }
       setIsLoading(true);
-      const deckCards = await getCardsByDeck(currentDeck.id);
-
+      const [deckCards, loadedSettings] = await Promise.all([getCardsByDeck(currentDeck.id), getSettings()]);
+      const day = getStudyDayString();
+      const [logsToday, daily] = await Promise.all([getReviewLogsForDay(day, currentDeck.id), getDailyStudiedCount()]);
       if (!isMounted) return;
-      setCards(deckCards);
 
-      const scheduler = new CardIntervalScheduler(currentDeck.id);
-      await scheduler.initialize(deckCards);
-
-      schedulerRef.current = scheduler;
-      const initialCard = scheduler.getCurrentCard();
-      setCurrentCard(initialCard);
-      cardShownAtRef.current = Date.now();
-      setIsFlipped(false);
+      settingsRef.current = loadedSettings;
+      setSettings(loadedSettings);
+      cardsRef.current = deckCards;
+      setCardCount(deckCards.length);
+      doneRef.current = countDone(logsToday);
+      extraNewRef.current = 0;
+      undoStackRef.current = [];
+      setUndoDepth(0);
+      studyDayRef.current = day;
+      setDailyStudiedCount(daily);
+      refreshQueue();
       setIsLoading(false);
     }
 
-    loadDeckData();
-
+    load();
     return () => {
       isMounted = false;
+      stopSpeaking();
     };
-  }, [currentDeck]);
+  }, [currentDeck, refreshQueue]);
+
+  // Saat antrean kosong tetapi ada kartu learning yang akan jatuh tempo, bangunkan antrean tepat waktu.
+  useEffect(() => {
+    if (current || nextLearningAt === null) return;
+    const delay = Math.min(Math.max(nextLearningAt - LEARN_AHEAD_MS - Date.now(), 1000), 2 ** 31 - 1);
+    const t = window.setTimeout(refreshQueue, delay);
+    return () => window.clearTimeout(t);
+  }, [current, nextLearningAt, refreshQueue]);
+
+  // Saat jendela kembali aktif: tangani pergantian hari dan jatuh tempo baru
+  useEffect(() => {
+    const onFocus = async () => {
+      if (!currentDeck) return;
+      const day = getStudyDayString();
+      if (day !== studyDayRef.current) {
+        const logs = await getReviewLogsForDay(day, currentDeck.id);
+        doneRef.current = countDone(logs);
+        extraNewRef.current = 0;
+        studyDayRef.current = day;
+        setDailyStudiedCount(await getDailyStudiedCount());
+        refreshQueue();
+      } else if (!current) {
+        refreshQueue();
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [currentDeck, current, refreshQueue]);
+
+  // Bacakan otomatis saat kartu baru tampil
+  const currentId = current?.card.id;
+  useEffect(() => {
+    if (settings.autoSpeak && current) speak(toSpeechText(current.card.front));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentId, settings.autoSpeak]);
+
+  const intervals = useMemo(
+    () => (current && isFlipped ? previewIntervals(current.card, settings) : null),
+    [current, isFlipped, settings]
+  );
+
+  const replaceCard = (updated: FlashcardType) => {
+    cardsRef.current = cardsRef.current.map((c) => (c.id === updated.id ? updated : c));
+  };
+
+  const pushUndo = (entry: UndoEntry) => {
+    undoStackRef.current.push(entry);
+    if (undoStackRef.current.length > 50) undoStackRef.current.shift();
+    setUndoDepth(undoStackRef.current.length);
+  };
 
   const handleFlip = () => {
+    playSfx('flip');
     setDisableAnimation(false);
-    setIsFlipped(!isFlipped);
+    setIsFlipped((f) => !f);
   };
 
-  const handleShuffle = () => {
-    if (!schedulerRef.current || cards.length <= 1) return;
-    setDisableAnimation(true);
-    setIsFlipped(false);
-    const next = schedulerRef.current.shuffleDeck();
-    setCurrentCard(next);
-    cardShownAtRef.current = Date.now();
-  };
-
-  const handleReviewSelection = async (interval: 3 | 5 | 30 | 50) => {
-    if (!schedulerRef.current || !currentCard || !currentDeck) return;
-
-    const answeredCard = currentCard;
-    const durationMs = Math.min(Math.max(Date.now() - cardShownAtRef.current, 0), 60000);
-
-    // Map interval to rating 1..4 (Again=1, Hard=2, Good=3, Easy=4)
-    const ratingMap: Record<number, ReviewRating> = {
-      3: 1,
-      5: 2,
-      30: 3,
-      50: 4,
-    };
-    const rating = ratingMap[interval];
-
-    // Instantly reset flip state without transition animation to avoid reverse spin
-    setDisableAnimation(true);
-    setIsFlipped(false);
-
-    const next = await schedulerRef.current.scheduleCurrentCard(interval);
-    setCurrentCard(next);
-    cardShownAtRef.current = Date.now();
-
-    // Increment daily studied count (resets at 03:00 AM)
-    const newDaily = await incrementDailyStudiedCount();
-    setDailyStudiedCount(newDaily);
-
-    // Record review log in IndexedDB
+  const handleAnswer = async (rating: ReviewRating) => {
+    if (!current || !currentDeck || busyRef.current) return;
+    busyRef.current = true;
     try {
-      await addReviewLog({
-        cardId: answeredCard.id,
+      const now = Date.now();
+      const prev = current.card;
+      const durationMs = Math.min(Math.max(now - cardShownAtRef.current, 0), 60000);
+      const result = answerCard(prev, rating, settingsRef.current, new Date(now));
+
+      const log = await saveCardWithLog(result.card, {
+        cardId: prev.id,
         deckId: currentDeck.id,
-        ts: Date.now(),
+        ts: now,
         rating,
-        interval,
+        scheduledDays: result.scheduledDays,
+        stateBefore: result.stateBefore,
         durationMs,
       });
+
+      replaceCard(result.card);
+      if (result.stateBefore === 0) doneRef.current.newDone++;
+      else if (result.stateBefore === 2) doneRef.current.reviewsDone++;
+      pushUndo({ type: 'answer', prev, logId: log.id, stateBefore: result.stateBefore });
+      setDailyStudiedCount((n) => n + 1);
+      if (result.becameLeech) {
+        showToast(`Kartu "${toPlainText(prev.front)}" sering gagal, ditangguhkan dan diberi tag "leech".`);
+      }
+      refreshQueue();
     } catch (err) {
-      console.error('Failed to save review log:', err);
+      console.error('Gagal menyimpan jawaban:', err);
+      playSfx('error');
+      showToast('Gagal menyimpan jawaban. Coba lagi.');
+    } finally {
+      busyRef.current = false;
     }
   };
+
+  const handleUndo = async () => {
+    const entry = undoStackRef.current.pop();
+    setUndoDepth(undoStackRef.current.length);
+    if (!entry || busyRef.current) return;
+    playSfx('undo');
+    busyRef.current = true;
+    try {
+      if (entry.type === 'answer') {
+        await undoReview(entry.prev, entry.logId);
+        if (entry.stateBefore === 0) doneRef.current.newDone = Math.max(doneRef.current.newDone - 1, 0);
+        else if (entry.stateBefore === 2) doneRef.current.reviewsDone = Math.max(doneRef.current.reviewsDone - 1, 0);
+        setDailyStudiedCount((n) => Math.max(n - 1, 0));
+      } else {
+        await saveCard(entry.prev);
+      }
+      replaceCard(entry.prev);
+      refreshQueue();
+      // Pastikan kartu yang dibatalkan yang tampil lagi
+      const restored = cardsRef.current.find((c) => c.id === entry.prev.id);
+      if (restored && !restored.suspended) {
+        setCurrent({ card: restored, kind: (restored.srs?.state ?? 0) === 0 ? 'new' : (restored.srs?.state ?? 0) === 2 ? 'review' : 'learning' });
+      }
+    } finally {
+      busyRef.current = false;
+    }
+  };
+
+  const handleSuspend = async () => {
+    if (!current || busyRef.current) return;
+    playSfx('suspend');
+    const prev = current.card;
+    const updated = { ...prev, suspended: true };
+    await saveCard(updated);
+    replaceCard(updated);
+    pushUndo({ type: 'edit', prev });
+    showToast(`Kartu "${toPlainText(prev.front)}" ditangguhkan. Tekan Z untuk membatalkan.`);
+    refreshQueue();
+  };
+
+  const handleBury = async () => {
+    if (!current || busyRef.current) return;
+    playSfx('bury');
+    const prev = current.card;
+    const updated = { ...prev, buriedUntil: getStudyDayString() };
+    await saveCard(updated);
+    replaceCard(updated);
+    pushUndo({ type: 'edit', prev });
+    showToast(`Kartu "${toPlainText(prev.front)}" disembunyikan sampai besok. Tekan Z untuk membatalkan.`);
+    refreshQueue();
+  };
+
+  const handleSpeak = (text?: string) => {
+    if (!current) return;
+    playSfx('speak');
+    speak(toSpeechText(text ?? (isFlipped ? current.card.example_jp || current.card.front : current.card.front)));
+  };
+
+  const handleStudyMore = () => {
+    extraNewRef.current += EXTRA_NEW_STEP;
+    refreshQueue();
+  };
+
+  // Shortcut keyboard. Handler selalu memakai closure terbaru lewat ref.
+  const keyHandlerRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  keyHandlerRef.current = (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable)) return;
+    if (e.altKey) return;
+    const key = e.key.toLowerCase();
+
+    if ((e.ctrlKey || e.metaKey) && key === 'z') {
+      e.preventDefault();
+      handleUndo();
+      return;
+    }
+    if (e.ctrlKey || e.metaKey) return;
+    if (!current) return;
+
+    if (key === ' ' || key === 'enter') {
+      e.preventDefault();
+      if (!isFlipped) handleFlip();
+      else {
+        playSfx('good');
+        handleAnswer(3);
+      }
+    } else if (['1', '2', '3', '4'].includes(key) && isFlipped) {
+      e.preventDefault();
+      const r = Number(key) as ReviewRating;
+      playSfx((['again', 'hard', 'good', 'easy'] as const)[r - 1]);
+      handleAnswer(r);
+    } else if (key === 'z') {
+      handleUndo();
+    } else if (key === 's') {
+      handleSuspend();
+    } else if (key === 'b') {
+      handleBury();
+    } else if (key === 'r') {
+      handleSpeak();
+    }
+  };
+  useEffect(() => {
+    const listener = (e: KeyboardEvent) => keyHandlerRef.current(e);
+    window.addEventListener('keydown', listener);
+    return () => window.removeEventListener('keydown', listener);
+  }, []);
 
   if (isLoading) {
     return (
@@ -174,7 +365,7 @@ export const Study: React.FC<StudyProps> = ({
     );
   }
 
-  if (!currentDeck || cards.length === 0) {
+  if (!currentDeck || cardCount === 0) {
     return (
       <div className="max-w-md mx-auto text-center py-12 px-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm mt-8">
         <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
@@ -192,9 +383,23 @@ export const Study: React.FC<StudyProps> = ({
     );
   }
 
+  const chip = (label: string, value: number, color: string, active: boolean) => (
+    <span
+      className={`flex items-center gap-1 text-xs font-semibold ${color} ${active ? 'underline underline-offset-4 decoration-2' : ''}`}
+    >
+      {label} <span className="tabular-nums">{value}</span>
+    </span>
+  );
+
   return (
     <div className="flex flex-col items-center justify-center w-full max-w-2xl mx-auto px-4 py-2">
-      {/* Top Deck Selector Dropdown */}
+      {toast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium max-w-[90vw]">
+          {toast}
+        </div>
+      )}
+
+      {/* Pemilih deck */}
       <div className="w-full max-w-xl mx-auto mb-3 flex items-center justify-between relative" ref={dropdownRef}>
         <div className="relative inline-block text-left">
           <button
@@ -209,9 +414,7 @@ export const Study: React.FC<StudyProps> = ({
 
           {isDeckDropdownOpen && (
             <div className="absolute left-0 mt-1.5 w-64 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl z-50 py-1.5 max-h-60 overflow-y-auto">
-              <div className="px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                Pilih Deck
-              </div>
+              <div className="px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pilih Deck</div>
               {decks.map((deck) => (
                 <button
                   key={deck.id}
@@ -244,38 +447,116 @@ export const Study: React.FC<StudyProps> = ({
           )}
         </div>
 
-        <div className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-          Total: {cards.length} kartu
+        <div className="flex items-center gap-3" aria-label="Sisa antrean">
+          {chip('Baru', counts.newCount, 'text-sky-600 dark:text-sky-400', current?.kind === 'new')}
+          {chip('Belajar', counts.learningCount, 'text-rose-600 dark:text-rose-400', current?.kind === 'learning')}
+          {chip('Review', counts.reviewCount, 'text-emerald-600 dark:text-emerald-400', current?.kind === 'review')}
         </div>
       </div>
 
-      {/* Flashcard Component */}
-      {currentCard && (
-        <Flashcard
-          key={currentCard.id}
-          card={currentCard}
-          isFlipped={isFlipped}
-          onFlip={handleFlip}
-          disableAnimation={disableAnimation}
-        />
+      {current ? (
+        <>
+          <Flashcard
+            key={current.card.id}
+            card={current.card}
+            isFlipped={isFlipped}
+            onFlip={handleFlip}
+            disableAnimation={disableAnimation}
+            onSpeak={(t) => handleSpeak(t)}
+          />
+
+          {/* Aksi kartu */}
+          <div className="w-full max-w-xl flex items-center justify-center gap-1 mb-3 text-slate-500">
+            <button
+              data-sfx="none"
+              onClick={handleUndo}
+              disabled={undoDepth === 0}
+              title="Batalkan (Z)"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <Undo2 className="w-4 h-4" /> Undo
+            </button>
+            <button
+              data-sfx="none"
+              onClick={handleSuspend}
+              title="Tangguhkan kartu (S)"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <Pause className="w-4 h-4" /> Suspend
+            </button>
+            <button
+              data-sfx="none"
+              onClick={handleBury}
+              title="Sembunyikan sampai besok (B)"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <EyeOff className="w-4 h-4" /> Bury
+            </button>
+            <button
+              data-sfx="none"
+              onClick={() => handleSpeak()}
+              title="Bacakan (R)"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <Volume2 className="w-4 h-4" /> Suara
+            </button>
+          </div>
+
+          {isFlipped ? (
+            <ReviewButtons onAnswer={handleAnswer} intervals={intervals} />
+          ) : (
+            <div className="w-full max-w-xl mx-auto px-2">
+              <button
+                data-sfx="none"
+              onClick={handleFlip}
+                className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md transition"
+              >
+                Tampilkan Jawaban <span className="text-xs opacity-70 ml-1">(Spasi)</span>
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="w-full max-w-md mx-auto text-center py-10 px-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
+          <PartyPopper className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">Selesai untuk sekarang</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+            {nextLearningAt
+              ? `Kartu berikutnya muncul sekitar pukul ${formatClock(nextLearningAt)}.`
+              : 'Tidak ada kartu yang jatuh tempo. Kembali lagi besok.'}
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+            {newRemaining > 0 && (
+              <button
+                onClick={handleStudyMore}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold"
+              >
+                Tambah {Math.min(EXTRA_NEW_STEP, newRemaining)} kartu baru
+              </button>
+            )}
+            {undoDepth > 0 && (
+              <button
+                data-sfx="none"
+              onClick={handleUndo}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-300"
+              >
+                Undo
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
-      {/* Circular Shuffle Button */}
-      <ShuffleButton onShuffle={handleShuffle} disabled={cards.length <= 1} />
-
-      {/* Review Interval Buttons (Again, Hard, Good, Easy) */}
-      <ReviewButtons onSelectInterval={handleReviewSelection} disabled={!currentCard} />
-
-      {/* Daily Studied Counter Text - Aligned across button width */}
       <div className="w-full max-w-xl mx-auto px-2 mt-4">
         <div className="w-full flex items-center justify-between text-xs sm:text-sm text-slate-600 dark:text-slate-400 border-t border-slate-200/80 dark:border-slate-800 pt-3">
-          <span className="font-medium text-slate-500 dark:text-slate-400">
-            Kartu dipelajari hari ini:
-          </span>
+          <span className="font-medium text-slate-500 dark:text-slate-400">Kartu dipelajari hari ini:</span>
           <span className="font-bold text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-lg">
             {dailyStudiedCount} kartu
           </span>
         </div>
+        <p className="hidden sm:block text-center text-[11px] text-slate-400 mt-2">
+          Spasi: balik / Good · 1–4: jawab · Z: undo · S: suspend · B: bury · R: suara
+        </p>
       </div>
     </div>
   );

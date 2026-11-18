@@ -1,5 +1,6 @@
-import type { Flashcard, ReviewLog, ScheduledInterval, ReviewRating } from '../types/flashcard';
-import { getStudyDayString } from './database';
+import type { Flashcard, ReviewLog, ReviewRating } from '../types/flashcard';
+import { getStudyDayString, getDayStartHour } from './database';
+import { getStudyDayEnd } from './queue';
 
 export type TimeRangeKey = '7d' | '1m' | '3m' | '1y' | 'all';
 
@@ -79,13 +80,13 @@ export interface StatsSummary {
     totalDeckCards: number;
   };
 
-  // 6. Future Due Queue
+  // 6. Future Due Queue (berdasarkan tanggal jatuh tempo FSRS)
   futureDue: {
-    dueNow: number;       // targetQueueIndex <= sessionCounter
-    in1to5: number;       // within 1-5 cards
-    in6to30: number;      // within 6-30 cards
-    in31to50: number;     // within 31-50 cards
-    beyond50: number;     // > 50 cards
+    dueNow: number;       // sudah jatuh tempo / jatuh tempo hari ini
+    tomorrow: number;     // besok
+    in2to7: number;       // 2-7 hari lagi
+    in8to30: number;      // 8-30 hari lagi
+    beyond30: number;     // > 30 hari
     totalScheduled: number;
   };
 
@@ -134,8 +135,6 @@ export function filterLogsByRange(logs: ReviewLog[], range: TimeRangeKey, now = 
 export function calculateStats(
   allLogs: ReviewLog[],
   cards: Flashcard[],
-  schedules: Record<string, ScheduledInterval>,
-  sessionCounter: number,
   filter: StatsFilter,
   referenceDate = new Date()
 ): StatsSummary {
@@ -373,27 +372,25 @@ export function calculateStats(
     }
   }
 
-  // --- 6. Future Due Queue (based on sessionCounter and schedules) ---
+  // --- 6. Future Due Queue (berdasarkan due date FSRS) ---
   let dueNow = 0;
-  let in1to5 = 0;
-  let in6to30 = 0;
-  let in31to50 = 0;
-  let beyond50 = 0;
-  const scheduledList = Object.values(schedules);
+  let tomorrow = 0;
+  let in2to7 = 0;
+  let in8to30 = 0;
+  let beyond30 = 0;
+  let totalScheduled = 0;
+  const dayEnd = getStudyDayEnd(referenceDate.getTime(), getDayStartHour());
+  const DAY_MS = 24 * 60 * 60 * 1000;
 
-  for (const sched of scheduledList) {
-    const diff = sched.targetQueueIndex - sessionCounter;
-    if (diff <= 0) {
-      dueNow++;
-    } else if (diff <= 5) {
-      in1to5++;
-    } else if (diff <= 30) {
-      in6to30++;
-    } else if (diff <= 50) {
-      in31to50++;
-    } else {
-      beyond50++;
-    }
+  for (const c of cards) {
+    if (!c.srs || c.srs.state === 0 || c.suspended) continue;
+    totalScheduled++;
+    const due = c.srs.due;
+    if (due < dayEnd) dueNow++;
+    else if (due < dayEnd + DAY_MS) tomorrow++;
+    else if (due < dayEnd + 7 * DAY_MS) in2to7++;
+    else if (due < dayEnd + 30 * DAY_MS) in8to30++;
+    else beyond30++;
   }
 
   // --- 7. Hourly Breakdown (0..23 local hours) ---
@@ -518,11 +515,11 @@ export function calculateStats(
     },
     futureDue: {
       dueNow,
-      in1to5,
-      in6to30,
-      in31to50,
-      beyond50,
-      totalScheduled: scheduledList.length,
+      tomorrow,
+      in2to7,
+      in8to30,
+      beyond30,
+      totalScheduled,
     },
     hourly,
     problemCards: top10ProblemCards,
