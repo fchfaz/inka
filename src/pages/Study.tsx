@@ -28,7 +28,7 @@ import { speak, stopSpeaking } from '../services/tts';
 import { playSfx } from '../services/sfx';
 import { DEFAULT_SETTINGS } from '../types/flashcard';
 import type { Deck, Flashcard as FlashcardType, ReviewRating, StudySettings } from '../types/flashcard';
-import { AlertCircle, RefreshCw, ChevronDown, BookOpen, Undo2, Pause, EyeOff, Volume2, PartyPopper } from 'lucide-react';
+import { AlertCircle, RefreshCw, ChevronDown, BookOpen, Undo2, Pause, EyeOff, PartyPopper } from 'lucide-react';
 
 interface StudyProps {
   currentDeck: Deck | null;
