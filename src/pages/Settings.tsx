@@ -3,7 +3,7 @@ import { Moon, Sun, Info, Smartphone, HardDriveDownload, Save, Download, Upload,
 import { useTranslation } from '../context/LanguageContext';
 import { getSettings, saveSettings } from '../services/database';
 import { parseSteps } from '../services/srs';
-import { configureSfx, playSfx, SFX_NAMES, type SfxName } from '../services/sfx';
+import { configureSfx, playSfx } from '../services/sfx';
 import { createBackupFile, downloadBlob, parseBackupBytes, restoreFullBackup } from '../services/importExport';
 import { formatBytes, getMediaStats, pruneUnusedMedia, storageEstimate, type MediaStats } from '../services/media';
 import { DEFAULT_SETTINGS, type StudySettings } from '../types/flashcard';
@@ -12,13 +12,6 @@ interface SettingsProps {
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
 }
-
-const SFX_LABEL: Record<SfxName, string> = {
-  tap: 'Tombol umum', nav: 'Navigasi', toggle: 'Saklar', close: 'Tutup / Batal', add: 'Tambah',
-  success: 'Simpan', file: 'Impor / Ekspor', danger: 'Hapus', error: 'Galat', flip: 'Balik kartu',
-  again: 'Again', hard: 'Hard', good: 'Good', easy: 'Easy', undo: 'Undo', suspend: 'Suspend',
-  bury: 'Bury', speak: 'Suara',
-};
 
 const card = 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs';
 const input =
@@ -313,23 +306,6 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
             onPointerUp={() => playSfx('tap')}
             className="w-full"
           />
-        </div>
-        <div>
-          <p className={label}>Uji suara</p>
-          <div className="flex flex-wrap gap-1.5">
-            {SFX_NAMES.map((name: SfxName) => (
-              <button
-                key={name}
-                type="button"
-                data-sfx="none"
-                disabled={!form.soundEnabled}
-                onClick={() => playSfx(name)}
-                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-100 dark:hover:bg-indigo-950 disabled:opacity-40"
-              >
-                {SFX_LABEL[name]}
-              </button>
-            ))}
-          </div>
         </div>
         <p className="text-xs text-slate-500">Klik "Simpan Pengaturan" di atas agar pilihan suara tersimpan.</p>
       </div>

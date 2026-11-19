@@ -494,14 +494,6 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
             >
               <EyeOff className="w-4 h-4" /> {t.actionBury}
             </button>
-            <button
-              data-sfx="none"
-              onClick={() => handleSpeak()}
-              title={`${t.actionVoice} (R)`}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              <Volume2 className="w-4 h-4" /> {t.actionVoice}
-            </button>
           </div>
 
           {isFlipped ? (
@@ -513,7 +505,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
               onClick={handleFlip}
                 className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md transition"
               >
-                {t.showAnswer} <span className="text-xs opacity-70 ml-1">(Spasi)</span>
+                {t.showAnswer}
               </button>
             </div>
           )}
