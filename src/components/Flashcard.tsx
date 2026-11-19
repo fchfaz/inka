@@ -24,7 +24,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
   onSpeak,
 }) => {
   const { t } = useTranslation();
-  const canSpeak = !!onSpeak && isSpeechSupported() && !!toSpeechText(card.meaning ?? '');
+  const canSpeak = !!onSpeak && isSpeechSupported() && !!toSpeechText(card.back || card.front);
 
   return (
     <div

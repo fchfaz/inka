@@ -52,8 +52,7 @@ function formatClock(ts: number): string {
 }
 
 export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavigateToDeckManager }) => {
-  const { t, language } = useTranslation();
-  const speechLang = language === 'id' ? 'id-ID' : 'en-US';
+  const { t } = useTranslation();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [cardCount, setCardCount] = useState(0);
   const [settings, setSettings] = useState<StudySettings>(DEFAULT_SETTINGS);
@@ -188,16 +187,17 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
     return () => window.removeEventListener('focus', onFocus);
   }, [currentDeck, current, refreshQueue]);
 
-  // Bacakan arti otomatis hanya saat kartu dibalik (sisi belakang); berhenti saat kembali ke depan / ganti kartu
+  // Bacakan kata Jepang (bacaan hiragana, atau kata depan bila kosong) hanya saat kartu dibalik;
+  // berhenti saat kembali ke depan / ganti kartu. Contoh kalimat dan arti tidak disuarakan.
   const currentId = current?.card.id;
-  const currentMeaning = current?.card.meaning;
+  const spokenText = current ? toSpeechText(current.card.back || current.card.front) : '';
   useEffect(() => {
     if (!isFlipped) {
       stopSpeaking();
       return;
     }
-    if (settings.autoSpeak) speak(toSpeechText(currentMeaning ?? ''), speechLang);
-  }, [currentId, currentMeaning, isFlipped, settings.autoSpeak, speechLang]);
+    if (settings.autoSpeak) speak(spokenText, 'ja-JP');
+  }, [currentId, spokenText, isFlipped, settings.autoSpeak]);
 
   const intervals = useMemo(
     () => (current && isFlipped ? previewIntervals(current.card, settings) : null),
@@ -311,7 +311,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
   const handleSpeak = () => {
     if (!current || !isFlipped) return;
     playSfx('speak');
-    speak(toSpeechText(current.card.meaning ?? ''), speechLang);
+    speak(toSpeechText(current.card.back || current.card.front), 'ja-JP');
   };
 
   const handleStudyMore = () => {

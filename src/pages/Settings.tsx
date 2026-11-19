@@ -268,7 +268,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
         <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
           <input type="checkbox" checked={form.autoSpeak}
             onChange={(e) => setForm({ ...form, autoSpeak: e.target.checked })} />
-          Bacakan arti otomatis saat kartu dibalik (suara dari browser)
+          Bacakan kata Jepang otomatis saat kartu dibalik (suara dari browser)
         </label>
 
         <button
