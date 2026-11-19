@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Moon, Sun, Info, Smartphone, HardDriveDownload, Save, Download, Upload, AlertTriangle, Volume2, Globe } from 'lucide-react';
-import { useTranslation } from '../context/languageContext';
+import { useTranslation } from '../context/useTranslation';
 import { getSettings, saveSettings } from '../services/database';
 import { parseSteps } from '../services/srs';
 import { configureSfx, playSfx } from '../services/sfx';

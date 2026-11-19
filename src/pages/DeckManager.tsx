@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useTranslation } from '../context/languageContext';
+import { useTranslation } from '../context/useTranslation';
 import type { Deck, Flashcard } from '../types/flashcard';
 import {
   getAllDecks,

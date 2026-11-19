@@ -2,7 +2,7 @@ import { toPlainText, toSpeechText } from '../services/richText';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Flashcard } from '../components/Flashcard';
 import { ReviewButtons } from '../components/ReviewButtons';
-import { useTranslation } from '../context/languageContext';
+import { useTranslation } from '../context/useTranslation';
 import {
   getCardsByDeck,
   getAllDecks,

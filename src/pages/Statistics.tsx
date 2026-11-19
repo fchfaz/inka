@@ -1,6 +1,6 @@
 import { toPlainText } from '../services/richText';
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useTranslation } from '../context/languageContext';
+import { useTranslation } from '../context/useTranslation';
 import type { Deck, Flashcard, ReviewLog } from '../types/flashcard';
 import {
   getAllDecks,

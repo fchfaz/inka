@@ -5,7 +5,7 @@ import type { Flashcard as FlashcardType } from '../types/flashcard';
 import { isSpeechSupported } from '../services/tts';
 import { toSpeechText } from '../services/richText';
 import { RichText } from './RichText';
-import { useTranslation } from '../context/languageContext';
+import { useTranslation } from '../context/useTranslation';
 
 interface FlashcardProps {
   card: FlashcardType;
