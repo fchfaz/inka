@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from '../context/LanguageContext';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useTranslation } from '../context/languageContext';
 import type { Deck, Flashcard } from '../types/flashcard';
 import {
   getAllDecks,
@@ -71,7 +71,6 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string>('all');
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
 
   // Modals & Panels
   const [isEditingCard, setIsEditingCard] = useState<boolean>(false);
@@ -84,51 +83,74 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
-  // Load decks on mount
-  useEffect(() => {
-    refreshDecks();
-  }, []);
-
   const [showAnkiImport, setShowAnkiImport] = useState(false);
 
-  const refreshDecks = async () => {
-    const list = await getAllDecks();
+  // Ref agar penerapan daftar deck tetap stabil (tidak memicu efek ulang saat deck terpilih berubah)
+  const selectedDeckRef = useRef(selectedDeck);
+  const onSelectDeckRef = useRef(onSelectDeck);
+  useEffect(() => {
+    selectedDeckRef.current = selectedDeck;
+    onSelectDeckRef.current = onSelectDeck;
+  });
+
+  const applyDecks = useCallback((list: Deck[]) => {
     setDecks(list);
-    if (!selectedDeck && list.length > 0) {
+    const selected = selectedDeckRef.current;
+    if (!selected && list.length > 0) {
       setSelectedDeck(list[0]);
-      onSelectDeck(list[0]);
-    } else if (selectedDeck) {
-      const exists = list.find(d => d.id === selectedDeck.id);
+      onSelectDeckRef.current(list[0]);
+    } else if (selected) {
+      const exists = list.find((d) => d.id === selected.id);
       if (exists) {
         setSelectedDeck(exists);
       } else if (list.length > 0) {
         setSelectedDeck(list[0]);
-        onSelectDeck(list[0]);
+        onSelectDeckRef.current(list[0]);
       } else {
         setSelectedDeck(null);
       }
     }
-  };
+  }, []);
+
+  const refreshDecks = useCallback(async () => {
+    applyDecks(await getAllDecks());
+  }, [applyDecks]);
+
+  const refreshCards = useCallback(async (deckId: string) => {
+    setCards(await getCardsByDeck(deckId));
+  }, []);
+
+  // Load decks on mount
+  useEffect(() => {
+    let cancelled = false;
+    getAllDecks().then((list) => {
+      if (!cancelled) applyDecks(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [applyDecks]);
 
   // Load cards when selected deck changes
+  const selectedDeckId = selectedDeck?.id;
   useEffect(() => {
-    if (selectedDeck) {
-      refreshCards(selectedDeck.id);
-    } else {
-      setCards([]);
-      setAvailableTags([]);
-    }
-  }, [selectedDeck]);
+    if (!selectedDeckId) return;
+    let cancelled = false;
+    getCardsByDeck(selectedDeckId).then((list) => {
+      if (!cancelled) setCards(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDeckId]);
 
-  const refreshCards = async (deckId: string) => {
-    const cardList = await getCardsByDeck(deckId);
-    setCards(cardList);
-
-    // Extract tags
+  // Tanpa deck terpilih: tidak ada kartu / tag yang ditampilkan
+  const visibleCards = useMemo(() => (selectedDeck ? cards : []), [selectedDeck, cards]);
+  const availableTags = useMemo(() => {
     const tagsSet = new Set<string>();
-    cardList.forEach(c => c.tags?.forEach(t => tagsSet.add(t)));
-    setAvailableTags(Array.from(tagsSet));
-  };
+    visibleCards.forEach((c) => c.tags?.forEach((t) => tagsSet.add(t)));
+    return Array.from(tagsSet);
+  }, [visibleCards]);
 
   const notify = (msg: string) => {
     setFeedbackMessage(msg);
@@ -312,7 +334,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
   };
 
   // Filter cards
-  const filteredCards = cards.filter((card) => {
+  const filteredCards = visibleCards.filter((card) => {
     const matchesSearch =
       [card.front, card.back, card.meaning, card.example_jp, card.extra ?? '']
         .map((f) => toPlainText(f).toLowerCase())
@@ -444,7 +466,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
                 onChange={(e) => setSelectedTag(e.target.value)}
                 className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-200 focus:outline-none"
               >
-                <option value="all">Semua Tag ({cards.length})</option>
+                <option value="all">Semua Tag ({visibleCards.length})</option>
                 {availableTags.map((tag) => (
                   <option key={tag} value={tag}>
                     #{tag}

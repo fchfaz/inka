@@ -5,14 +5,15 @@ import type { Flashcard as FlashcardType } from '../types/flashcard';
 import { isSpeechSupported } from '../services/tts';
 import { toSpeechText } from '../services/richText';
 import { RichText } from './RichText';
-import { useTranslation } from '../context/LanguageContext';
+import { useTranslation } from '../context/languageContext';
 
 interface FlashcardProps {
   card: FlashcardType;
   isFlipped: boolean;
   onFlip: () => void;
   disableAnimation?: boolean;
-  onSpeak?: (text: string) => void;
+  /** Membacakan arti kartu (hanya tersedia di sisi belakang). */
+  onSpeak?: () => void;
 }
 
 export const Flashcard: React.FC<FlashcardProps> = ({
@@ -23,23 +24,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
   onSpeak,
 }) => {
   const { t } = useTranslation();
-  const canSpeak = !!onSpeak && isSpeechSupported();
-  const speakButton = (text: string, size = 'w-4 h-4') =>
-    canSpeak && toSpeechText(text) ? (
-      <button
-        type="button"
-        data-sfx="none"
-        onClick={(e) => {
-          e.stopPropagation();
-          onSpeak!(toSpeechText(text));
-        }}
-        className="p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-        aria-label="Bacakan"
-        title="Bacakan (R)"
-      >
-        <Volume2 className={size} />
-      </button>
-    ) : null;
+  const canSpeak = !!onSpeak && isSpeechSupported() && !!toSpeechText(card.meaning ?? '');
 
   return (
     <div
@@ -60,7 +45,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
         {/* FRONT SIDE */}
         <div className="absolute inset-0 w-full h-full backface-hidden rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between">
           <div className="flex items-center justify-between w-full">
-            <div>{speakButton(card.front)}</div>
+            <div />
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300">
               {t.badgeFront}
             </span>
@@ -82,7 +67,23 @@ export const Flashcard: React.FC<FlashcardProps> = ({
         {/* BACK SIDE */}
         <div className="absolute inset-0 w-full h-full backface-hidden rotate-y-180 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between overflow-y-auto">
           <div className="flex items-center justify-between w-full pb-1">
-            <div>{speakButton(card.example_jp || card.front)}</div>
+            <div>
+              {canSpeak && (
+                <button
+                  type="button"
+                  data-sfx="none"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSpeak?.();
+                  }}
+                  className="p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  aria-label={t.actionVoice}
+                  title={`${t.actionVoice} (R)`}
+                >
+                  <Volume2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950/70 dark:text-sky-300">
               {t.badgeBack}
             </span>

@@ -14,7 +14,8 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({
 }) => {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
 
-  const refDate = referenceDate || new Date();
+  const [now] = useState(() => new Date());
+  const refDate = referenceDate ?? now;
   const oneDayMs = 24 * 60 * 60 * 1000;
   const days: { dateStr: string; dayOfWeek: number; count: number }[] = [];
 

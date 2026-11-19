@@ -1,17 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { type Language, type Translations, translations } from '../services/i18n';
-
-interface LanguageContextType {
-  language: Language;
-  setLanguage: (lang: Language) => void;
-  t: Translations;
-}
-
-const LanguageContext = createContext<LanguageContextType>({
-  language: 'id',
-  setLanguage: () => {},
-  t: translations.id,
-});
+import React, { useState, useEffect } from 'react';
+import { type Language, translations } from '../services/i18n';
+import { LanguageContext } from './languageContext';
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
@@ -45,5 +34,3 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     </LanguageContext.Provider>
   );
 };
-
-export const useTranslation = () => useContext(LanguageContext);

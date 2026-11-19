@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Moon, Sun, Info, Smartphone, HardDriveDownload, Save, Download, Upload, AlertTriangle, Volume2, Globe } from 'lucide-react';
-import { useTranslation } from '../context/LanguageContext';
+import { useTranslation } from '../context/languageContext';
 import { getSettings, saveSettings } from '../services/database';
 import { parseSteps } from '../services/srs';
 import { configureSfx, playSfx } from '../services/sfx';
@@ -61,7 +61,22 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
     }
   };
   useEffect(() => {
-    void refreshMedia();
+    let cancelled = false;
+    (async () => {
+      try {
+        const stats = await getMediaStats();
+        const est = await storageEstimate();
+        if (!cancelled) {
+          setMediaStats(stats);
+          setQuota(est);
+        }
+      } catch {
+        /* IndexedDB tidak tersedia: panel disembunyikan */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handlePrune = async () => {
@@ -253,7 +268,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
         <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
           <input type="checkbox" checked={form.autoSpeak}
             onChange={(e) => setForm({ ...form, autoSpeak: e.target.checked })} />
-          Bacakan kartu otomatis (suara bahasa Jepang dari browser)
+          Bacakan arti otomatis saat kartu dibalik (suara dari browser)
         </label>
 
         <button

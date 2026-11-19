@@ -26,16 +26,14 @@ export const DonutChart: React.FC<DonutChartProps> = ({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  // Pre-calculate cumulative offsets in a pure way before rendering
-  let runningPercent = 0;
-  const calculatedSegments = segments.map((seg) => {
+  // Offset kumulatif dihitung murni (tanpa reassign variabel) sebelum render
+  const calculatedSegments = segments.map((seg, i) => {
     const fraction = total > 0 ? seg.count / total : 0;
-    const offset = -runningPercent * circumference;
-    runningPercent += fraction;
+    const before = segments.slice(0, i).reduce((sum, s) => sum + (total > 0 ? s.count / total : 0), 0);
     return {
       ...seg,
       dasharray: `${fraction * circumference} ${circumference}`,
-      dashoffset: offset,
+      dashoffset: -before * circumference,
     };
   });
 

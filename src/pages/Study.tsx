@@ -2,7 +2,7 @@ import { toPlainText, toSpeechText } from '../services/richText';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Flashcard } from '../components/Flashcard';
 import { ReviewButtons } from '../components/ReviewButtons';
-import { useTranslation } from '../context/LanguageContext';
+import { useTranslation } from '../context/languageContext';
 import {
   getCardsByDeck,
   getAllDecks,
@@ -28,7 +28,7 @@ import { speak, stopSpeaking } from '../services/tts';
 import { playSfx } from '../services/sfx';
 import { DEFAULT_SETTINGS } from '../types/flashcard';
 import type { Deck, Flashcard as FlashcardType, ReviewRating, StudySettings } from '../types/flashcard';
-import { AlertCircle, RefreshCw, ChevronDown, BookOpen, Undo2, Pause, EyeOff, Volume2, PartyPopper } from 'lucide-react';
+import { AlertCircle, RefreshCw, ChevronDown, BookOpen, Undo2, Pause, EyeOff, PartyPopper } from 'lucide-react';
 
 interface StudyProps {
   currentDeck: Deck | null;
@@ -52,7 +52,8 @@ function formatClock(ts: number): string {
 }
 
 export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavigateToDeckManager }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const speechLang = language === 'id' ? 'id-ID' : 'en-US';
   const [decks, setDecks] = useState<Deck[]>([]);
   const [cardCount, setCardCount] = useState(0);
   const [settings, setSettings] = useState<StudySettings>(DEFAULT_SETTINGS);
@@ -76,7 +77,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
   const studyDayRef = useRef<string>(getStudyDayString());
   const busyRef = useRef(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
-  const cardShownAtRef = useRef<number>(Date.now());
+  const cardShownAtRef = useRef<number>(0);
   const toastTimerRef = useRef<number | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -187,12 +188,16 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
     return () => window.removeEventListener('focus', onFocus);
   }, [currentDeck, current, refreshQueue]);
 
-  // Bacakan otomatis saat kartu baru tampil
+  // Bacakan arti otomatis hanya saat kartu dibalik (sisi belakang); berhenti saat kembali ke depan / ganti kartu
   const currentId = current?.card.id;
+  const currentMeaning = current?.card.meaning;
   useEffect(() => {
-    if (settings.autoSpeak && current) speak(toSpeechText(current.card.front));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentId, settings.autoSpeak]);
+    if (!isFlipped) {
+      stopSpeaking();
+      return;
+    }
+    if (settings.autoSpeak) speak(toSpeechText(currentMeaning ?? ''), speechLang);
+  }, [currentId, currentMeaning, isFlipped, settings.autoSpeak, speechLang]);
 
   const intervals = useMemo(
     () => (current && isFlipped ? previewIntervals(current.card, settings) : null),
@@ -303,10 +308,10 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
     refreshQueue();
   };
 
-  const handleSpeak = (text?: string) => {
-    if (!current) return;
+  const handleSpeak = () => {
+    if (!current || !isFlipped) return;
     playSfx('speak');
-    speak(toSpeechText(text ?? (isFlipped ? current.card.example_jp || current.card.front : current.card.front)));
+    speak(toSpeechText(current.card.meaning ?? ''), speechLang);
   };
 
   const handleStudyMore = () => {
@@ -316,7 +321,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
 
   // Shortcut keyboard. Handler selalu memakai closure terbaru lewat ref.
   const keyHandlerRef = useRef<(e: KeyboardEvent) => void>(() => {});
-  keyHandlerRef.current = (e: KeyboardEvent) => {
+  const handleKey = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement | null;
     if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable)) return;
     if (e.altKey) return;
@@ -352,6 +357,9 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
       handleSpeak();
     }
   };
+  useEffect(() => {
+    keyHandlerRef.current = handleKey;
+  });
   useEffect(() => {
     const listener = (e: KeyboardEvent) => keyHandlerRef.current(e);
     window.addEventListener('keydown', listener);
@@ -464,7 +472,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
             isFlipped={isFlipped}
             onFlip={handleFlip}
             disableAnimation={disableAnimation}
-            onSpeak={(t) => handleSpeak(t)}
+            onSpeak={handleSpeak}
           />
 
           {/* Aksi kartu */}

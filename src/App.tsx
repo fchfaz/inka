@@ -4,7 +4,8 @@ import { DeckManager } from './pages/DeckManager';
 import { Settings } from './pages/Settings';
 import { initializeDefaultDeck, getAllDecks, getSettings, migrateLegacyProgress } from './services/database';
 import { installSfxListener } from './services/sfx';
-import { LanguageProvider, useTranslation } from './context/LanguageContext';
+import { LanguageProvider } from './context/LanguageContext';
+import { useTranslation } from './context/languageContext';
 import type { Deck } from './types/flashcard';
 import { BookMarked, FolderKanban, BarChart3, Sliders, Clock } from 'lucide-react';
 

@@ -1,6 +1,6 @@
 import { toPlainText } from '../services/richText';
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useTranslation } from '../context/LanguageContext';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useTranslation } from '../context/languageContext';
 import type { Deck, Flashcard, ReviewLog } from '../types/flashcard';
 import {
   getAllDecks,
@@ -98,31 +98,54 @@ export const Statistics: React.FC<StatisticsProps> = ({
     setTimeout(() => setToastMsg(null), 3000);
   };
 
-  // Load all necessary data from IndexedDB
-  const loadStatsData = async () => {
-    setIsLoading(true);
+  // Ambil semua data yang dibutuhkan dari IndexedDB (murni: tidak menyentuh state)
+  const fetchStatsData = useCallback(async () => {
+    const targetDeck = selectedDeckId === 'all' ? undefined : selectedDeckId;
+    const [allDecks, fetchedLogs, fetchedCards] = await Promise.all([
+      getAllDecks(),
+      getAllReviewLogs(targetDeck),
+      targetDeck ? getCardsByDeck(targetDeck) : getAllCards(),
+    ]);
+    return { allDecks, fetchedLogs, fetchedCards };
+  }, [selectedDeckId]);
+
+  const loadStatsData = useCallback(async () => {
     try {
-      const allDecks = await getAllDecks();
-      setDecks(allDecks);
-
-      const targetDeck = selectedDeckId === 'all' ? undefined : selectedDeckId;
-      const [fetchedLogs, fetchedCards] = await Promise.all([
-        getAllReviewLogs(targetDeck),
-        targetDeck ? getCardsByDeck(targetDeck) : getAllCards(),
-      ]);
-
-      setLogs(fetchedLogs);
-      setCards(fetchedCards);
+      const data = await fetchStatsData();
+      setDecks(data.allDecks);
+      setLogs(data.fetchedLogs);
+      setCards(data.fetchedCards);
     } catch (err) {
       console.error('Failed to load stats data:', err);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [fetchStatsData]);
 
   useEffect(() => {
-    loadStatsData();
-  }, [selectedDeckId]);
+    let cancelled = false;
+    fetchStatsData()
+      .then((data) => {
+        if (cancelled) return;
+        setDecks(data.allDecks);
+        setLogs(data.fetchedLogs);
+        setCards(data.fetchedCards);
+      })
+      .catch((err) => console.error('Failed to load stats data:', err))
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchStatsData]);
+
+  // Pindah deck: tampilkan loading sampai data deck baru siap
+  const changeDeck = (id: string) => {
+    if (id === selectedDeckId) return;
+    setIsLoading(true);
+    setSelectedDeckId(id);
+  };
 
   // Pure aggregation computed via useMemo
   const stats = useMemo(() => {
@@ -210,7 +233,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
               <div className="absolute right-0 mt-1.5 w-56 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl z-50 py-1.5 max-h-60 overflow-y-auto">
                 <button
                   onClick={() => {
-                    setSelectedDeckId('all');
+                    changeDeck('all');
                     setIsDeckDropdownOpen(false);
                   }}
                   className={`w-full text-left px-3.5 py-2 text-xs sm:text-sm flex items-center justify-between transition ${
@@ -226,7 +249,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
                   <button
                     key={d.id}
                     onClick={() => {
-                      setSelectedDeckId(d.id);
+                      changeDeck(d.id);
                       setIsDeckDropdownOpen(false);
                     }}
                     className={`w-full text-left px-3.5 py-2 text-xs sm:text-sm flex items-center justify-between transition ${
