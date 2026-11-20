@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Moon, Sun, Info, Smartphone, HardDriveDownload, Save, Download, Upload, AlertTriangle, Volume2, Globe } from 'lucide-react';
 import { useTranslation } from '../context/useTranslation';
+import { useMsg } from '../context/useMsg';
+import { markBackupDone } from '../services/backupReminder';
 import { getSettings, saveSettings } from '../services/database';
 import { parseSteps } from '../services/srs';
 import { configureSfx, playSfx } from '../services/sfx';
 import { createBackupFile, downloadBlob, parseBackupBytes, restoreFullBackup } from '../services/importExport';
-import { formatBytes, getMediaStats, pruneUnusedMedia, storageEstimate, type MediaStats } from '../services/media';
+import { formatBytes, getMediaStats, isStoragePersistent, pruneUnusedMedia, requestPersistentStorage, storageEstimate, type MediaStats } from '../services/media';
 import { DEFAULT_SETTINGS, type StudySettings } from '../types/flashcard';
 
 interface SettingsProps {
@@ -20,6 +22,7 @@ const label = 'block text-xs font-semibold text-slate-600 dark:text-slate-300 mb
 
 export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode }) => {
   const { language, setLanguage, t } = useTranslation();
+  const m = useMsg();
   const [form, setForm] = useState<StudySettings>(DEFAULT_SETTINGS);
   const [learningText, setLearningText] = useState(DEFAULT_SETTINGS.learningSteps.join(' '));
   const [relearningText, setRelearningText] = useState(DEFAULT_SETTINGS.relearningSteps.join(' '));
@@ -43,19 +46,21 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
     const relearning = parseSteps(relearningText);
     if (!learning || !relearning) {
       playSfx('error');
-      setMessage({ kind: 'error', text: 'Langkah belajar harus berformat angka + m/h/d, mis. "1m 10m" atau "1h 1d".' });
+      setMessage({ kind: 'error', text: m('set.stepsInvalid') });
       return;
     }
     await saveSettings({ ...form, learningSteps: learning, relearningSteps: relearning });
-    setMessage({ kind: 'ok', text: 'Pengaturan disimpan.' });
+    setMessage({ kind: 'ok', text: m('set.saved') });
   };
 
   const [mediaStats, setMediaStats] = useState<MediaStats | null>(null);
   const [quota, setQuota] = useState<{ usage: number; quota: number } | null>(null);
+  const [persistent, setPersistent] = useState<boolean | null>(null);
   const refreshMedia = async () => {
     try {
       setMediaStats(await getMediaStats());
       setQuota(await storageEstimate());
+      setPersistent(await isStoragePersistent());
     } catch {
       /* IndexedDB tidak tersedia: panel disembunyikan */
     }
@@ -66,9 +71,11 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
       try {
         const stats = await getMediaStats();
         const est = await storageEstimate();
+        const persisted = await isStoragePersistent();
         if (!cancelled) {
           setMediaStats(stats);
           setQuota(est);
+          setPersistent(persisted);
         }
       } catch {
         /* IndexedDB tidak tersedia: panel disembunyikan */
@@ -82,10 +89,10 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
   const handlePrune = async () => {
     try {
       const r = await pruneUnusedMedia();
-      setMessage({ kind: 'ok', text: r.removed ? `${r.removed} media tak terpakai dihapus (${formatBytes(r.freedBytes)} dibebaskan).` : 'Tidak ada media yang tidak terpakai.' });
+      setMessage({ kind: 'ok', text: r.removed ? m('set.pruned', { n: r.removed, size: formatBytes(r.freedBytes) }) : m('set.prunedNone') });
       await refreshMedia();
     } catch (err) {
-      setMessage({ kind: 'error', text: `Gagal membersihkan media: ${(err as Error).message}` });
+      setMessage({ kind: 'error', text: m('set.pruneFail', { err: (err as Error).message }) });
     }
   };
 
@@ -93,12 +100,18 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
     try {
       const f = await createBackupFile();
       downloadBlob(f.filename, f.blob);
+      markBackupDone();
       setMessage({
         kind: 'ok',
-        text: `Backup berisi ${f.backup.decks.length} deck, ${f.backup.cards.length} kartu, ${f.backup.revlog.length} riwayat review${f.mediaCount ? `, ${f.mediaCount} berkas media (${formatBytes(f.blob.size)})` : ''}.`,
+        text: m('set.backupDone', {
+          decks: f.backup.decks.length,
+          cards: f.backup.cards.length,
+          logs: f.backup.revlog.length,
+          media: f.mediaCount ? m('set.backupMedia', { n: f.mediaCount, size: formatBytes(f.blob.size) }) : '',
+        }),
       });
     } catch (err) {
-      setMessage({ kind: 'error', text: `Backup gagal: ${(err as Error).message}` });
+      setMessage({ kind: 'error', text: m('set.backupFail', { err: (err as Error).message }) });
     }
   };
 
@@ -109,7 +122,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
     try {
       const { backup, media } = parseBackupBytes(new Uint8Array(await file.arrayBuffer()));
       const ok = confirm(
-        `Pulihkan backup ini?\n${backup.decks.length} deck, ${backup.cards.length} kartu, ${backup.revlog.length} riwayat${media.length ? `, ${media.length} media` : ''}.\n\nSeluruh data saat ini akan DIGANTI.`
+        m('set.restoreConfirm', { decks: backup.decks.length, cards: backup.cards.length, logs: backup.revlog.length, media: media.length ? m('set.restoreMedia', { n: media.length }) : '' })
       );
       if (!ok) return;
       const res = await restoreFullBackup(backup, media);
@@ -117,10 +130,10 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
       setForm(s);
       setLearningText(s.learningSteps.join(' '));
       setRelearningText(s.relearningSteps.join(' '));
-      setMessage({ kind: 'ok', text: `Dipulihkan: ${res.decks} deck, ${res.cards} kartu, ${res.logs} riwayat${res.media ? `, ${res.media} media` : ''}.` });
+      setMessage({ kind: 'ok', text: m('set.restoreDone', { decks: res.decks, cards: res.cards, logs: res.logs, media: res.media ? m('set.restoreMedia', { n: res.media }) : '' }) });
       await refreshMedia();
     } catch (err) {
-      setMessage({ kind: 'error', text: `Gagal memulihkan backup: ${(err as Error).message}` });
+      setMessage({ kind: 'error', text: m('set.restoreFail', { err: (err as Error).message }) });
     }
   };
 
@@ -215,51 +228,50 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
       <div className={`${card} space-y-4`}>
         <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-semibold">
           <Info size={20} className="text-indigo-500" />
-          <h3>Penjadwalan Belajar (FSRS)</h3>
+          <h3>{m('set.fsrsTitle')}</h3>
         </div>
         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-          Tiap kartu punya tanggal jatuh tempo sendiri. Kartu yang kamu ingat muncul makin jarang, kartu yang sering lupa
-          muncul lebih sering. Pengaturan ini berlaku untuk semua deck.
+          {m('set.fsrsDesc')}
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className={label} htmlFor="newPerDay">Kartu baru per hari</label>
+            <label className={label} htmlFor="newPerDay">{m('set.newPerDay')}</label>
             <input id="newPerDay" type="number" min={0} max={9999} className={input} value={form.newPerDay}
               onChange={(e) => setForm({ ...form, newPerDay: num(e.target.value, 0, 9999, form.newPerDay) })} />
           </div>
           <div>
-            <label className={label} htmlFor="reviewsPerDay">Maksimum review per hari</label>
+            <label className={label} htmlFor="reviewsPerDay">{m('set.reviewsPerDay')}</label>
             <input id="reviewsPerDay" type="number" min={0} max={99999} className={input} value={form.reviewsPerDay}
               onChange={(e) => setForm({ ...form, reviewsPerDay: num(e.target.value, 0, 99999, form.reviewsPerDay) })} />
           </div>
           <div>
-            <label className={label} htmlFor="retention">Target retensi (0,70 – 0,99)</label>
+            <label className={label} htmlFor="retention">{m('set.retention')}</label>
             <input id="retention" type="number" step={0.01} min={0.7} max={0.99} className={input} value={form.desiredRetention}
               onChange={(e) => setForm({ ...form, desiredRetention: num(e.target.value, 0.7, 0.99, form.desiredRetention) })} />
           </div>
           <div>
-            <label className={label} htmlFor="maxInterval">Interval maksimum (hari)</label>
+            <label className={label} htmlFor="maxInterval">{m('set.maxInterval')}</label>
             <input id="maxInterval" type="number" min={1} max={36500} className={input} value={form.maximumInterval}
               onChange={(e) => setForm({ ...form, maximumInterval: num(e.target.value, 1, 36500, form.maximumInterval) })} />
           </div>
           <div>
-            <label className={label} htmlFor="learningSteps">Langkah belajar kartu baru</label>
+            <label className={label} htmlFor="learningSteps">{m('set.learningSteps')}</label>
             <input id="learningSteps" className={input} value={learningText} placeholder="1m 10m"
               onChange={(e) => setLearningText(e.target.value)} />
           </div>
           <div>
-            <label className={label} htmlFor="relearningSteps">Langkah ulang saat lupa</label>
+            <label className={label} htmlFor="relearningSteps">{m('set.relearningSteps')}</label>
             <input id="relearningSteps" className={input} value={relearningText} placeholder="10m"
               onChange={(e) => setRelearningText(e.target.value)} />
           </div>
           <div>
-            <label className={label} htmlFor="dayStart">Jam pergantian hari (0–23)</label>
+            <label className={label} htmlFor="dayStart">{m('set.dayStart')}</label>
             <input id="dayStart" type="number" min={0} max={23} className={input} value={form.dayStartHour}
               onChange={(e) => setForm({ ...form, dayStartHour: num(e.target.value, 0, 23, form.dayStartHour) })} />
           </div>
           <div>
-            <label className={label} htmlFor="leech">Batas leech (0 = nonaktif)</label>
+            <label className={label} htmlFor="leech">{m('set.leech')}</label>
             <input id="leech" type="number" min={0} max={99} className={input} value={form.leechThreshold}
               onChange={(e) => setForm({ ...form, leechThreshold: num(e.target.value, 0, 99, form.leechThreshold) })} />
           </div>
@@ -268,14 +280,14 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
         <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
           <input type="checkbox" checked={form.autoSpeak}
             onChange={(e) => setForm({ ...form, autoSpeak: e.target.checked })} />
-          Bacakan kata Jepang otomatis saat kartu dibalik (suara dari browser)
+          {m('set.autoSpeak')}
         </label>
 
         <button
           onClick={handleSave}
           className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold"
         >
-          <Save size={16} /> Simpan Pengaturan
+          <Save size={16} /> {m('set.save')}
         </button>
       </div>
 
@@ -283,11 +295,10 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
       <div className={`${card} space-y-4`}>
         <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-semibold">
           <Volume2 size={20} className="text-indigo-500" />
-          <h3>Efek Suara Tombol</h3>
+          <h3>{m('set.sfxTitle')}</h3>
         </div>
         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-          Tiap jenis tombol punya bunyi sendiri dengan tema lonceng kaca yang sama. Tombol jawaban Again, Hard, Good,
-          dan Easy bernada berbeda, turun untuk gagal dan naik untuk berhasil.
+          {m('set.sfxDesc')}
         </p>
         <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
           <input
@@ -299,11 +310,11 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
               if (e.target.checked) playSfx('toggle');
             }}
           />
-          Aktifkan efek suara
+          {m('set.sfxEnable')}
         </label>
         <div>
           <label className={label} htmlFor="sfxVolume">
-            Volume ({Math.round(form.soundVolume * 100)}%)
+            {m('set.volume', { pct: Math.round(form.soundVolume * 100) })}
           </label>
           <input
             id="sfxVolume"
@@ -322,33 +333,32 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
             className="w-full"
           />
         </div>
-        <p className="text-xs text-slate-500">Klik "Simpan Pengaturan" di atas agar pilihan suara tersimpan.</p>
+        <p className="text-xs text-slate-500">{m('set.sfxSaveHint')}</p>
       </div>
 
       {/* Backup */}
       <div className={`${card} space-y-3`}>
         <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-semibold">
           <HardDriveDownload size={20} className="text-emerald-500" />
-          <h3>Backup & Pemulihan</h3>
+          <h3>{m('set.backupTitle')}</h3>
         </div>
         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-          Backup penuh menyimpan kartu, jadwal belajar, riwayat review, pengaturan, dan media (berupa file .zip bila ada media). Data hanya ada di browser ini,
-          jadi unduh backup secara berkala, terutama sebelum membersihkan data browser.
+          {m('set.backupDesc')}
         </p>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={handleBackup}
             className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded-xl text-sm font-medium hover:bg-slate-700"
           >
-            <Download size={16} /> Unduh Backup
+            <Download size={16} /> {m('set.backupDownload')}
           </button>
           <label className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-medium hover:bg-slate-200 cursor-pointer">
-            <Upload size={16} /> Pulihkan dari Backup
+            <Upload size={16} /> {m('set.backupRestore')}
             <input type="file" accept=".json,.zip,application/json,application/zip" onChange={handleRestore} className="hidden" />
           </label>
         </div>
         <p className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-          <AlertTriangle size={14} /> Memulihkan backup menggantikan seluruh data saat ini.
+          <AlertTriangle size={14} /> {m('set.backupWarn')}
         </p>
       </div>
 
@@ -357,17 +367,17 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
         <div className={`${card} space-y-3`}>
           <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-semibold">
             <HardDriveDownload size={20} className="text-emerald-500" />
-            <h3>Media kartu</h3>
+            <h3>{m('set.mediaTitle')}</h3>
           </div>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-            {mediaStats.count} berkas, {formatBytes(mediaStats.bytes)}
-            {quota && quota.quota > 0 ? ` · browser memakai ${formatBytes(quota.usage)} dari ±${formatBytes(quota.quota)}` : ''}.
+            {m('set.mediaStats', { n: mediaStats.count, size: formatBytes(mediaStats.bytes) })}
+            {quota && quota.quota > 0 ? m('set.mediaQuota', { usage: formatBytes(quota.usage), quota: formatBytes(quota.quota) }) : ''}.
           </p>
           <button
             onClick={() => void handlePrune()}
             className="px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-medium hover:bg-slate-200"
           >
-            Bersihkan media tak terpakai
+            {m('set.mediaPrune')}
           </button>
         </div>
       )}
@@ -376,11 +386,30 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
       <div className={`${card} space-y-3`}>
         <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-semibold">
           <Smartphone size={20} className="text-emerald-500" />
-          <h3>PWA & Offline Storage</h3>
+          <h3>{m('set.pwaTitle')}</h3>
         </div>
         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-          Aplikasi ini beroperasi secara <b>offline-first</b> menggunakan browser IndexedDB, tanpa server eksternal.
+          {m('set.pwaDesc')}
         </p>
+        {persistent !== null && (
+          <div className="space-y-2">
+            <p className={`text-xs ${persistent ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+              {persistent ? m('set.persistYes') : m('set.persistNo')}
+            </p>
+            {!persistent && (
+              <button
+                onClick={async () => {
+                  const ok = await requestPersistentStorage();
+                  setPersistent(await isStoragePersistent());
+                  setMessage({ kind: ok ? 'ok' : 'error', text: ok ? m('set.persistGranted') : m('set.persistDenied') });
+                }}
+                className="px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-medium hover:bg-slate-200"
+              >
+                {m('set.persistAsk')}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

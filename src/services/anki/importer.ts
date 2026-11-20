@@ -1,9 +1,10 @@
+import { msg } from '../messages';
 import type { Deck, Flashcard, ReviewLog } from '../../types/flashcard';
 import { getDB, getStudyDayString } from '../database';
 import { runAtomic } from '../importExport';
 import {
   MAX_MEDIA_BYTES, MediaStorageError, kindFromName, makeMediaKey, mimeFromName, putMediaBatch,
-  pruneUnusedMedia, requestPersistentStorage,
+  pruneUnusedMedia, requestPersistentStorage, withMediaWrite,
 } from '../media';
 import type { MediaResolution } from '../richText';
 import type { AnkiPackage } from './apkg';
@@ -34,10 +35,19 @@ function newDeckId(): string {
 }
 
 function abortIf(signal?: AbortSignal): void {
-  if (signal?.aborted) throw new DOMException('Impor dibatalkan', 'AbortError');
+  if (signal?.aborted) throw new DOMException(msg('import.cancelled'), 'AbortError');
 }
 
-export async function importAnkiPackage(
+export function importAnkiPackage(
+  pkg: AnkiPackage,
+  opts: ConvertOptions,
+  onProgress?: (p: AnkiImportProgress) => void,
+  signal?: AbortSignal
+): Promise<AnkiImportSummary> {
+  return withMediaWrite(() => runImport(pkg, opts, onProgress, signal));
+}
+
+async function runImport(
   pkg: AnkiPackage,
   opts: ConvertOptions,
   onProgress?: (p: AnkiImportProgress) => void,
@@ -157,7 +167,7 @@ export async function importAnkiPackage(
       }
     });
   } catch (err) {
-    if (mediaStored > 0) await pruneUnusedMedia().catch(() => undefined);
+    if (mediaStored > 0) await pruneUnusedMedia({ force: true }).catch(() => undefined);
     throw err;
   }
   onProgress?.({ phase: 'cards', done: total, total });

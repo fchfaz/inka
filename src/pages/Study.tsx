@@ -1,4 +1,4 @@
-import { toPlainText, toSpeechText } from '../services/richText';
+import { toPlainText } from '../services/richText';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Flashcard } from '../components/Flashcard';
 import { ReviewButtons } from '../components/ReviewButtons';
@@ -24,7 +24,7 @@ import {
   type QueueCounts,
   type QueueKind,
 } from '../services/queue';
-import { speak, stopSpeaking } from '../services/tts';
+import { speak, speakableText, stopSpeaking } from '../services/tts';
 import { playSfx } from '../services/sfx';
 import { DEFAULT_SETTINGS } from '../types/flashcard';
 import type { Deck, Flashcard as FlashcardType, ReviewRating, StudySettings } from '../types/flashcard';
@@ -190,7 +190,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
   // Bacakan kata Jepang (bacaan hiragana, atau kata depan bila kosong) hanya saat kartu dibalik;
   // berhenti saat kembali ke depan / ganti kartu. Contoh kalimat dan arti tidak disuarakan.
   const currentId = current?.card.id;
-  const spokenText = current ? toSpeechText(current.card.back || current.card.front) : '';
+  const spokenText = current ? speakableText(current.card) : '';
   useEffect(() => {
     if (!isFlipped) {
       stopSpeaking();
@@ -309,9 +309,9 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
   };
 
   const handleSpeak = () => {
-    if (!current || !isFlipped) return;
+    if (!current || !isFlipped || !spokenText) return;
     playSfx('speak');
-    speak(toSpeechText(current.card.back || current.card.front), 'ja-JP');
+    speak(spokenText, 'ja-JP');
   };
 
   const handleStudyMore = () => {

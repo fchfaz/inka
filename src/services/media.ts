@@ -1,3 +1,4 @@
+import { msg } from './messages';
 import { getDB } from './database';
 import type { Flashcard } from '../types/flashcard';
 import type { MediaKind } from './richText';
@@ -80,8 +81,6 @@ function isQuotaError(err: unknown): boolean {
   return !!e && (e.name === 'QuotaExceededError' || /quota/i.test(e.message ?? ''));
 }
 
-const QUOTA_MESSAGE =
-  'Penyimpanan browser penuh. Hapus media yang tidak terpakai di Pengaturan, bebaskan ruang di perangkat, atau impor tanpa media.';
 
 /** Minta browser agar tidak menghapus data situs ini saat ruang menipis (best-effort). */
 export async function requestPersistentStorage(): Promise<boolean> {
@@ -127,8 +126,8 @@ export async function putMediaBatch(records: Array<{ key: string; mime: string; 
       /* sudah selesai */
     }
     await tx.done.catch(() => undefined);
-    if (isQuotaError(err)) throw new MediaStorageError(QUOTA_MESSAGE, 'quota');
-    throw new MediaStorageError(`Gagal menyimpan media: ${(err as Error)?.message ?? err}`, 'unknown');
+    if (isQuotaError(err)) throw new MediaStorageError(msg('media.quota'), 'quota');
+    throw new MediaStorageError(msg('media.saveFail', { err: (err as Error)?.message ?? String(err) }), 'unknown');
   }
   return added;
 }
@@ -167,10 +166,10 @@ export function clearMediaUrlCache(): void {
 export async function addMediaFile(file: File): Promise<string> {
   const kind = kindFromName(file.name);
   if (!kind) {
-    throw new MediaStorageError('Jenis berkas tidak didukung. Gunakan gambar, audio (mp3, ogg, wav, m4a), atau video (mp4, webm).', 'unsupported');
+    throw new MediaStorageError(msg('media.unsupported'), 'unsupported');
   }
   if (file.size > MAX_MEDIA_BYTES) {
-    throw new MediaStorageError(`Berkas terlalu besar (maks ${Math.round(MAX_MEDIA_BYTES / 1048576)} MB).`, 'too-large');
+    throw new MediaStorageError(msg('media.tooLarge', { mb: Math.round(MAX_MEDIA_BYTES / 1048576) }), 'too-large');
   }
   const data = await file.arrayBuffer();
   const key = await makeMediaKey(new Uint8Array(data), file.name);
@@ -202,8 +201,23 @@ export function cardMediaText(c: Flashcard): string {
   return [c.front, c.back, c.meaning, c.example_jp, c.example_hiragana, c.example_id, c.hint, c.extra].join('\n');
 }
 
-/** Hapus media yang tidak dirujuk kartu mana pun. */
-export async function pruneUnusedMedia(): Promise<{ removed: number; freedBytes: number }> {
+let mediaWrites = 0;
+/** Tandai penulisan media yang belum disusul penulisan kartu (impor/pemulihan), agar prune otomatis tidak menghapusnya. */
+export async function withMediaWrite<T>(body: () => Promise<T>): Promise<T> {
+  mediaWrites++;
+  try {
+    return await body();
+  } finally {
+    mediaWrites--;
+  }
+}
+
+/**
+ * Hapus media yang tidak dirujuk kartu mana pun. Dilewati bila sedang ada impor/pemulihan
+ * (kecuali force), karena media baru belum tentu sudah dirujuk kartu.
+ */
+export async function pruneUnusedMedia(opts: { force?: boolean } = {}): Promise<{ removed: number; freedBytes: number }> {
+  if (mediaWrites > 0 && !opts.force) return { removed: 0, freedBytes: 0 };
   const db = await getDB();
   const used = new Set<string>();
   let cursor = await db.transaction('cards', 'readonly').store.openCursor();
@@ -233,4 +247,13 @@ export function formatBytes(n: number): string {
   if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
   if (n < 1073741824) return `${(n / 1048576).toFixed(1)} MB`;
   return `${(n / 1073741824).toFixed(2)} GB`;
+}
+
+export async function isStoragePersistent(): Promise<boolean> {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.storage?.persisted) return await navigator.storage.persisted();
+  } catch {
+    /* tidak didukung */
+  }
+  return false;
 }

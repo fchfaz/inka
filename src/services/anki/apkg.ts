@@ -3,6 +3,7 @@
  * Mendukung tiga generasi format: legacy1 (collection.anki2), legacy2 (collection.anki21)
  * dan terbaru (collection.anki21b, zstd + media protobuf).
  */
+import { msg } from '../messages';
 import { unzipSync } from 'fflate';
 import { decompress as zstdDecompress } from 'fzstd';
 import type { Database, SqlJsStatic } from 'sql.js';
@@ -132,7 +133,7 @@ async function getSql(factory?: SqlFactory): Promise<SqlJsStatic> {
     const init = (mod as unknown as { default: (cfg?: object) => Promise<SqlJsStatic> }).default;
     return await init();
   } catch (e) {
-    throw new AnkiImportError('sql-init', `Komponen pembaca database gagal dimuat (${(e as Error).message}). Muat ulang halaman lalu coba lagi.`);
+    throw new AnkiImportError('sql-init', msg('anki.sqlInit', { err: (e as Error).message }));
   }
 }
 
@@ -157,7 +158,7 @@ async function openCollection(SQL: SqlJsStatic, bytes: Uint8Array): Promise<Data
     db = new SQL.Database(bytes);
     db.exec('select count(*) from sqlite_master');
   } catch {
-    throw new AnkiImportError('corrupt', 'Berkas koleksi di dalam paket rusak atau bukan database SQLite.');
+    throw new AnkiImportError('corrupt', msg('anki.badDb'));
   }
   const has = db.exec("select count(*) from sqlite_master where sql like '%unicase%'")[0]?.values[0][0];
   if (num(has) > 0) {
@@ -181,17 +182,17 @@ const normDeck = (n: string) => n.split('\x1f').join('::');
 // ---------------------------------------------------------------------------
 export async function readAnkiPackage(input: Uint8Array, factory?: SqlFactory): Promise<AnkiPackage> {
   if (input.byteLength > MAX_PACKAGE_BYTES) {
-    throw new AnkiImportError('too-large', 'Paket lebih besar dari 1 GB; terlalu besar untuk diimpor di browser. Pecah deck-nya atau ekspor tanpa media.');
+    throw new AnkiImportError('too-large', msg('anki.tooLarge'));
   }
   if (input.byteLength < 4 || input[0] !== 0x50 || input[1] !== 0x4b) {
-    throw new AnkiImportError('not-zip', 'Berkas ini bukan paket Anki (.apkg / .colpkg). Ekspor dari Anki lewat Berkas → Ekspor.');
+    throw new AnkiImportError('not-zip', msg('anki.notZip'));
   }
 
   let core: Record<string, Uint8Array>;
   try {
     core = unzipSync(input, { filter: (f) => !/^\d+$/.test(f.name) });
   } catch (e) {
-    throw new AnkiImportError('corrupt', `Arsip zip rusak atau tidak lengkap (${(e as Error).message}).`);
+    throw new AnkiImportError('corrupt', msg('anki.badZip', { err: (e as Error).message }));
   }
 
   let colName: string | null = null;
@@ -200,21 +201,21 @@ export async function readAnkiPackage(input: Uint8Array, factory?: SqlFactory): 
   else if (core['collection.anki21']) { colName = 'collection.anki21'; format = 'legacy2'; }
   else if (core['collection.anki2']) { colName = 'collection.anki2'; format = 'legacy1'; }
   if (!colName) {
-    throw new AnkiImportError('no-collection', 'Tidak ada koleksi di dalam paket. Pastikan berkas adalah hasil ekspor Anki yang utuh.');
+    throw new AnkiImportError('no-collection', msg('anki.noCollection'));
   }
 
   let colBytes = core[colName];
   try {
     if (isZstd(colBytes)) colBytes = zstdDecompress(colBytes);
   } catch (e) {
-    throw new AnkiImportError('corrupt', `Koleksi terkompresi rusak (${(e as Error).message}).`);
+    throw new AnkiImportError('corrupt', msg('anki.badCompressed', { err: (e as Error).message }));
   }
 
   const SQL = await getSql(factory);
   const db = await openCollection(SQL, colBytes);
   try {
     if (!tableExists(db, 'notes') || !tableExists(db, 'cards') || !tableExists(db, 'col')) {
-      throw new AnkiImportError('corrupt', 'Struktur database Anki tidak dikenali.');
+      throw new AnkiImportError('corrupt', msg('anki.badStructure'));
     }
     const noteCount = num(db.exec('select count(*) from notes')[0]?.values[0][0]);
     if (noteCount === 0) {
@@ -223,8 +224,8 @@ export async function readAnkiPackage(input: Uint8Array, factory?: SqlFactory): 
       throw new AnkiImportError(
         looksStub ? 'stub-only' : 'empty',
         looksStub
-          ? 'Paket ini dibuat Anki versi baru dan hanya berisi koleksi pengganti. Ekspor ulang dari Anki dengan opsi "Dukung Anki versi lama" dinyalakan, atau perbarui Inka ke versi terbaru.'
-          : 'Paket tidak berisi satu pun catatan (note).'
+          ? msg('anki.stub')
+          : msg('anki.empty')
       );
     }
 
@@ -283,7 +284,7 @@ export async function readAnkiPackage(input: Uint8Array, factory?: SqlFactory): 
         const ds = JSON.parse(str(colRow.decks) || '{}') as Record<string, { name?: string }>;
         for (const [id, d] of Object.entries(ds)) decks.set(id, normDeck(d.name ?? id));
       } catch {
-        throw new AnkiImportError('corrupt', 'Data tipe catatan/deck di dalam paket tidak bisa dibaca.');
+        throw new AnkiImportError('corrupt', msg('anki.badModels'));
       }
     }
 

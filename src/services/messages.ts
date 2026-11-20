@@ -1,0 +1,335 @@
+/**
+ * Katalog pesan dua bahasa untuk fitur impor Anki, media, backup, dan pengaturan.
+ * - Komponen: `const m = useMsg()` (ikut berubah saat bahasa diganti).
+ * - Service: `msg('kunci', { param })` membaca bahasa tersimpan (localStorage 'inka_language').
+ * Placeholder berbentuk {nama}. Bahasa bawaan: Indonesia.
+ */
+export type Lang = 'id' | 'en';
+
+const ID = {
+  // ---- Galat paket Anki
+  'anki.notZip': 'Berkas ini bukan paket Anki (.apkg / .colpkg). Ekspor dari Anki lewat Berkas → Ekspor.',
+  'anki.noCollection': 'Tidak ada koleksi di dalam paket. Pastikan berkas adalah hasil ekspor Anki yang utuh.',
+  'anki.badZip': 'Arsip zip rusak atau tidak lengkap ({err}).',
+  'anki.badCompressed': 'Koleksi terkompresi rusak ({err}).',
+  'anki.badDb': 'Berkas koleksi di dalam paket rusak atau bukan database SQLite.',
+  'anki.badStructure': 'Struktur database Anki tidak dikenali.',
+  'anki.badModels': 'Data tipe catatan/deck di dalam paket tidak bisa dibaca.',
+  'anki.tooLarge': 'Paket lebih besar dari 1 GB; terlalu besar untuk diimpor di browser. Pecah deck-nya atau ekspor tanpa media.',
+  'anki.stub': 'Paket ini dibuat Anki versi baru dan hanya berisi koleksi pengganti. Ekspor ulang dari Anki dengan opsi "Dukung Anki versi lama" dinyalakan, atau perbarui Inka ke versi terbaru.',
+  'anki.empty': 'Paket tidak berisi satu pun catatan (note).',
+  'anki.sqlInit': 'Komponen pembaca database gagal dimuat ({err}). Muat ulang halaman lalu coba lagi.',
+  'import.cancelled': 'Impor dibatalkan',
+  'import.cancelledNothingSaved': 'Impor dibatalkan. Tidak ada perubahan yang disimpan.',
+  'import.quota': 'Penyimpanan browser penuh. Impor tanpa media atau bebaskan ruang, lalu coba lagi.',
+  'import.memory': 'Memori browser tidak cukup untuk paket sebesar ini. Coba impor tanpa media atau pecah deck-nya.',
+  'import.failed': 'Impor gagal: {err}. Tidak ada perubahan yang disimpan.',
+
+  // ---- Media
+  'media.quota': 'Penyimpanan browser penuh. Hapus media yang tidak terpakai di Pengaturan, bebaskan ruang di perangkat, atau impor tanpa media.',
+  'media.saveFail': 'Gagal menyimpan media: {err}',
+  'media.unsupported': 'Jenis berkas tidak didukung. Gunakan gambar, audio (mp3, ogg, wav, m4a), atau video (mp4, webm).',
+  'media.tooLarge': 'Berkas terlalu besar (maks {mb} MB).',
+  'media.missing': 'media hilang',
+  'media.missingTitle': 'Media tidak ditemukan',
+
+  // ---- Backup / validasi (service)
+  'backup.zipBroken': 'Arsip backup rusak atau tidak lengkap.',
+  'backup.noJson': 'Arsip ini bukan backup Inka (backup.json tidak ada).',
+  'backup.notJson': 'Berkas bukan JSON/ZIP backup yang valid.',
+  'backup.invalid': 'Backup tidak valid.',
+  'backup.makeFail': 'Gagal membuat berkas backup: {err}',
+  'backup.notObject': 'File bukan JSON object.',
+  'backup.wrongSchema': 'Bukan file backup Inka (schema "inka.backup").',
+  'backup.wrongVersion': 'Versi backup tidak didukung.',
+  'backup.corrupt': 'Backup rusak: decks, cards, atau revlog tidak ada.',
+  'bundle.notObject': 'JSON harus berupa object valid.',
+  'bundle.wrongSchema': 'Schema tidak valid. Harus "recallio.deck-bundle".',
+  'bundle.versionNumber': 'Field "version" harus berupa angka.',
+  'bundle.decksArray': 'Field "decks" harus berupa array dan minimal memiliki 1 deck.',
+  'csv.noDeck': 'Deck tujuan tidak ditemukan.',
+  'csv.noRows': 'Tidak ada baris kartu yang terbaca dari file.',
+
+  // ---- Dialog impor Anki
+  'dlg.title': 'Impor paket Anki',
+  'dlg.close': 'Tutup',
+  'dlg.pickTitle': 'Pilih berkas .apkg atau .colpkg',
+  'dlg.pickHint': 'Diekspor dari Anki lewat Berkas → Ekspor. Dibaca di perangkat ini; tidak ada yang diunggah.',
+  'dlg.reading': 'Membaca {name}…',
+  'dlg.summary': '{name}: {notes} catatan, {cards} kartu, {decks} deck, {media} berkas media, {revs} riwayat review.',
+  'dlg.cardsCount': '{name} · {n} kartu',
+  'dlg.cloze': ' · cloze',
+  'dlg.occlusion': 'Image Occlusion: topeng gambar tidak didukung, hanya gambar dan teksnya yang diimpor. Nonaktif secara bawaan.',
+  'dlg.targetOf': 'Tujuan field {f}',
+  'dlg.skip': '(jangan impor)',
+  'dlg.needFront': 'Tiap tipe catatan yang aktif perlu satu field untuk "Depan".',
+  'dlg.progress': 'Bawa progres belajar dan riwayat review (dijadwalkan ulang ke FSRS)',
+  'dlg.media': 'Impor gambar, audio, dan video',
+  'dlg.keepDecks': 'Pertahankan struktur deck',
+  'dlg.oneDeck': 'Satu deck:',
+  'dlg.deckName': 'Nama deck tujuan',
+  'dlg.safeRepeat': 'Impor ulang paket yang sama aman: kartu yang sudah ada dilewati, progres Anda tidak ditimpa.',
+  'dlg.cancel': 'Batal',
+  'dlg.import': 'Impor sekarang',
+  'dlg.savingMedia': 'Menyimpan media',
+  'dlg.savingCards': 'Menyimpan kartu',
+  'dlg.abort': 'Batalkan',
+  'dlg.done': 'Impor selesai',
+  'dlg.added': '{n} kartu ditambah di {d} deck baru',
+  'dlg.skipped': '{n} kartu sudah ada, dilewati',
+  'dlg.logs': '{n} riwayat review dibawa',
+  'dlg.mediaStored': '{n} berkas media disimpan',
+  'dlg.empty': '{n} kartu kosong dilewati',
+  'dlg.ntSkipped': '{n} kartu "{name}" tidak diimpor ({reason})',
+  'dlg.reasonDisabled': 'dinonaktifkan',
+  'dlg.reasonUnknown': 'tipe catatan tidak ada',
+  'dlg.mediaMissing': 'Media tidak ada di paket: {list}.',
+  'dlg.mediaSkipped': 'Dilewati (tidak didukung/terlalu besar/rusak): {list}.',
+  'dlg.more': ' +{n} lagi',
+  'dlg.otherFile': 'Pilih berkas lain',
+
+  // ---- Pengaturan
+  'set.stepsInvalid': 'Langkah belajar harus berformat angka + m/h/d, mis. "1m 10m" atau "1h 1d".',
+  'set.saved': 'Pengaturan disimpan.',
+  'set.fsrsTitle': 'Penjadwalan Belajar (FSRS)',
+  'set.fsrsDesc': 'Tiap kartu punya tanggal jatuh tempo sendiri. Kartu yang kamu ingat muncul makin jarang, kartu yang sering lupa muncul lebih sering. Pengaturan ini berlaku untuk semua deck.',
+  'set.newPerDay': 'Kartu baru per hari',
+  'set.reviewsPerDay': 'Maksimum review per hari',
+  'set.retention': 'Target retensi (0,70 – 0,99)',
+  'set.maxInterval': 'Interval maksimum (hari)',
+  'set.learningSteps': 'Langkah belajar kartu baru',
+  'set.relearningSteps': 'Langkah ulang saat lupa',
+  'set.dayStart': 'Jam pergantian hari (0–23)',
+  'set.leech': 'Batas leech (0 = nonaktif)',
+  'set.autoSpeak': 'Bacakan kata Jepang otomatis saat kartu dibalik (suara dari browser)',
+  'set.save': 'Simpan Pengaturan',
+  'set.sfxTitle': 'Efek Suara Tombol',
+  'set.sfxDesc': 'Tiap jenis tombol punya bunyi sendiri dengan tema lonceng kaca yang sama. Tombol jawaban Again, Hard, Good, dan Easy bernada berbeda, turun untuk gagal dan naik untuk berhasil.',
+  'set.sfxEnable': 'Aktifkan efek suara',
+  'set.volume': 'Volume ({pct}%)',
+  'set.sfxSaveHint': 'Klik "Simpan Pengaturan" di atas agar pilihan suara tersimpan.',
+  'set.backupTitle': 'Backup & Pemulihan',
+  'set.backupDesc': 'Backup penuh menyimpan kartu, jadwal belajar, riwayat review, pengaturan, dan media (berupa file .zip bila ada media). Data hanya ada di browser ini, jadi unduh backup secara berkala, terutama sebelum membersihkan data browser.',
+  'set.backupDownload': 'Unduh Backup',
+  'set.backupRestore': 'Pulihkan dari Backup',
+  'set.backupWarn': 'Memulihkan backup menggantikan seluruh data saat ini.',
+  'set.backupDone': 'Backup berisi {decks} deck, {cards} kartu, {logs} riwayat review{media}.',
+  'set.backupMedia': ', {n} berkas media ({size})',
+  'set.backupFail': 'Backup gagal: {err}',
+  'set.restoreConfirm': 'Pulihkan backup ini?\n{decks} deck, {cards} kartu, {logs} riwayat{media}.\n\nSeluruh data saat ini akan DIGANTI.',
+  'set.restoreMedia': ', {n} media',
+  'set.restoreDone': 'Dipulihkan: {decks} deck, {cards} kartu, {logs} riwayat{media}.',
+  'set.restoreFail': 'Gagal memulihkan backup: {err}',
+  'set.mediaTitle': 'Media kartu',
+  'set.mediaStats': '{n} berkas, {size}',
+  'set.mediaQuota': ' · browser memakai {usage} dari ±{quota}',
+  'set.mediaPrune': 'Bersihkan media tak terpakai',
+  'set.pruned': '{n} media tak terpakai dihapus ({size} dibebaskan).',
+  'set.prunedNone': 'Tidak ada media yang tidak terpakai.',
+  'set.pruneFail': 'Gagal membersihkan media: {err}',
+  'set.persistYes': 'Penyimpanan permanen aktif: browser tidak akan menghapus data ini saat ruang menipis.',
+  'set.persistNo': 'Penyimpanan belum permanen: browser boleh menghapus data ini bila ruang menipis. Unduh backup secara berkala.',
+  'set.persistAsk': 'Minta penyimpanan permanen',
+  'set.persistGranted': 'Penyimpanan permanen diaktifkan.',
+  'set.persistDenied': 'Browser belum mengizinkan. Biasanya diberikan setelah aplikasi dipakai rutin atau dipasang sebagai PWA.',
+  'set.pwaTitle': 'PWA & Offline Storage',
+  'set.pwaDesc': 'Aplikasi ini beroperasi secara offline-first menggunakan browser IndexedDB, tanpa server eksternal.',
+
+  // ---- Pengingat backup
+  'remind.text': 'Sudah {days} hari sejak backup terakhir (atau belum pernah). Data hanya ada di browser ini.',
+  'remind.never': 'Anda belum pernah membuat backup. Data hanya ada di browser ini.',
+  'remind.go': 'Buka Backup',
+  'remind.later': 'Ingatkan nanti',
+
+  'field.front': 'Depan (kanji / kosakata)',
+  'field.back': 'Bacaan (hiragana)',
+  'field.meaning': 'Arti',
+  'field.example_jp': 'Contoh kalimat',
+  'field.example_hiragana': 'Bacaan kalimat',
+  'field.example_id': 'Arti kalimat',
+  'field.hint': 'Petunjuk',
+  'field.extra': 'Catatan / media tambahan',
+
+  // ---- Editor kartu
+  'card.frontRequired': 'Kolom Depan wajib diisi.',
+  'card.extraLabel': 'Catatan / media tambahan (opsional, tampil di sisi belakang)',
+  'card.attach': 'Lampirkan gambar / audio / video',
+  'card.attachFail': 'Gagal melampirkan: {err}',
+} as const;
+
+export type MsgKey = keyof typeof ID;
+
+const EN: Record<MsgKey, string> = {
+  'anki.notZip': 'This file is not an Anki package (.apkg / .colpkg). Export from Anki via File → Export.',
+  'anki.noCollection': 'The package has no collection. Make sure the file is a complete Anki export.',
+  'anki.badZip': 'The zip archive is damaged or incomplete ({err}).',
+  'anki.badCompressed': 'The compressed collection is damaged ({err}).',
+  'anki.badDb': 'The collection inside the package is damaged or is not a SQLite database.',
+  'anki.badStructure': 'The Anki database structure was not recognised.',
+  'anki.badModels': 'The note type / deck data inside the package could not be read.',
+  'anki.tooLarge': 'The package is larger than 1 GB, too big to import in a browser. Split the deck or export without media.',
+  'anki.stub': 'This package was made by a newer Anki and contains only a placeholder collection. Re-export from Anki with "Support older Anki versions" turned on, or update Inka to the latest version.',
+  'anki.empty': 'The package contains no notes.',
+  'anki.sqlInit': 'The database reader component failed to load ({err}). Reload the page and try again.',
+  'import.cancelled': 'Import cancelled',
+  'import.cancelledNothingSaved': 'Import cancelled. No changes were saved.',
+  'import.quota': 'Browser storage is full. Import without media or free up space, then try again.',
+  'import.memory': 'The browser ran out of memory for a package this large. Try importing without media or split the deck.',
+  'import.failed': 'Import failed: {err}. No changes were saved.',
+
+  'media.quota': 'Browser storage is full. Remove unused media in Settings, free up space on the device, or import without media.',
+  'media.saveFail': 'Failed to save media: {err}',
+  'media.unsupported': 'Unsupported file type. Use an image, audio (mp3, ogg, wav, m4a), or video (mp4, webm).',
+  'media.tooLarge': 'File too large (max {mb} MB).',
+  'media.missing': 'media missing',
+  'media.missingTitle': 'Media not found',
+
+  'backup.zipBroken': 'The backup archive is damaged or incomplete.',
+  'backup.noJson': 'This archive is not an Inka backup (backup.json is missing).',
+  'backup.notJson': 'The file is not a valid JSON/ZIP backup.',
+  'backup.invalid': 'Invalid backup.',
+  'backup.makeFail': 'Failed to create the backup file: {err}',
+  'backup.notObject': 'The file is not a JSON object.',
+  'backup.wrongSchema': 'Not an Inka backup file (schema "inka.backup").',
+  'backup.wrongVersion': 'Unsupported backup version.',
+  'backup.corrupt': 'Damaged backup: decks, cards, or revlog is missing.',
+  'bundle.notObject': 'The JSON must be a valid object.',
+  'bundle.wrongSchema': 'Invalid schema. It must be "recallio.deck-bundle".',
+  'bundle.versionNumber': 'The "version" field must be a number.',
+  'bundle.decksArray': 'The "decks" field must be an array with at least 1 deck.',
+  'csv.noDeck': 'Target deck not found.',
+  'csv.noRows': 'No card rows could be read from the file.',
+
+  'dlg.title': 'Import Anki package',
+  'dlg.close': 'Close',
+  'dlg.pickTitle': 'Choose a .apkg or .colpkg file',
+  'dlg.pickHint': 'Exported from Anki via File → Export. It is read on this device; nothing is uploaded.',
+  'dlg.reading': 'Reading {name}…',
+  'dlg.summary': '{name}: {notes} notes, {cards} cards, {decks} decks, {media} media files, {revs} review logs.',
+  'dlg.cardsCount': '{name} · {n} cards',
+  'dlg.cloze': ' · cloze',
+  'dlg.occlusion': 'Image Occlusion: image masks are not supported; only the image and its text are imported. Disabled by default.',
+  'dlg.targetOf': 'Destination of field {f}',
+  'dlg.skip': "(don't import)",
+  'dlg.needFront': 'Every enabled note type needs one field for "Front".',
+  'dlg.progress': 'Bring study progress and review history (rescheduled to FSRS)',
+  'dlg.media': 'Import images, audio, and video',
+  'dlg.keepDecks': 'Keep deck structure',
+  'dlg.oneDeck': 'Single deck:',
+  'dlg.deckName': 'Destination deck name',
+  'dlg.safeRepeat': 'Re-importing the same package is safe: existing cards are skipped and your progress is not overwritten.',
+  'dlg.cancel': 'Cancel',
+  'dlg.import': 'Import now',
+  'dlg.savingMedia': 'Saving media',
+  'dlg.savingCards': 'Saving cards',
+  'dlg.abort': 'Cancel import',
+  'dlg.done': 'Import complete',
+  'dlg.added': '{n} cards added in {d} new decks',
+  'dlg.skipped': '{n} cards already existed and were skipped',
+  'dlg.logs': '{n} review logs brought over',
+  'dlg.mediaStored': '{n} media files saved',
+  'dlg.empty': '{n} empty cards skipped',
+  'dlg.ntSkipped': '{n} "{name}" cards not imported ({reason})',
+  'dlg.reasonDisabled': 'disabled',
+  'dlg.reasonUnknown': 'note type missing',
+  'dlg.mediaMissing': 'Media not in the package: {list}.',
+  'dlg.mediaSkipped': 'Skipped (unsupported / too large / damaged): {list}.',
+  'dlg.more': ' +{n} more',
+  'dlg.otherFile': 'Choose another file',
+
+  'set.stepsInvalid': 'Learning steps must be a number + m/h/d, e.g. "1m 10m" or "1h 1d".',
+  'set.saved': 'Settings saved.',
+  'set.fsrsTitle': 'Study Scheduling (FSRS)',
+  'set.fsrsDesc': 'Each card has its own due date. Cards you remember appear less often; cards you often forget appear more often. These settings apply to all decks.',
+  'set.newPerDay': 'New cards per day',
+  'set.reviewsPerDay': 'Maximum reviews per day',
+  'set.retention': 'Desired retention (0.70 – 0.99)',
+  'set.maxInterval': 'Maximum interval (days)',
+  'set.learningSteps': 'Learning steps for new cards',
+  'set.relearningSteps': 'Relearning steps after a lapse',
+  'set.dayStart': 'Day start hour (0–23)',
+  'set.leech': 'Leech threshold (0 = off)',
+  'set.autoSpeak': 'Read the Japanese word aloud when the card is flipped (browser voice)',
+  'set.save': 'Save Settings',
+  'set.sfxTitle': 'Button Sound Effects',
+  'set.sfxDesc': 'Each kind of button has its own sound in the same glass-bell theme. The Again, Hard, Good, and Easy buttons use different pitches: falling for a miss, rising for a success.',
+  'set.sfxEnable': 'Enable sound effects',
+  'set.volume': 'Volume ({pct}%)',
+  'set.sfxSaveHint': 'Click "Save Settings" above to keep your sound choices.',
+  'set.backupTitle': 'Backup & Restore',
+  'set.backupDesc': 'A full backup stores cards, study schedule, review history, settings, and media (as a .zip file when there is media). Your data lives only in this browser, so download a backup regularly, especially before clearing browser data.',
+  'set.backupDownload': 'Download Backup',
+  'set.backupRestore': 'Restore from Backup',
+  'set.backupWarn': 'Restoring a backup replaces all current data.',
+  'set.backupDone': 'Backup contains {decks} decks, {cards} cards, {logs} review logs{media}.',
+  'set.backupMedia': ', {n} media files ({size})',
+  'set.backupFail': 'Backup failed: {err}',
+  'set.restoreConfirm': 'Restore this backup?\n{decks} decks, {cards} cards, {logs} review logs{media}.\n\nAll current data will be REPLACED.',
+  'set.restoreMedia': ', {n} media files',
+  'set.restoreDone': 'Restored: {decks} decks, {cards} cards, {logs} review logs{media}.',
+  'set.restoreFail': 'Failed to restore the backup: {err}',
+  'set.mediaTitle': 'Card media',
+  'set.mediaStats': '{n} files, {size}',
+  'set.mediaQuota': ' · the browser uses {usage} of ±{quota}',
+  'set.mediaPrune': 'Clean up unused media',
+  'set.pruned': '{n} unused media files removed ({size} freed).',
+  'set.prunedNone': 'There is no unused media.',
+  'set.pruneFail': 'Failed to clean up media: {err}',
+  'set.persistYes': 'Persistent storage is on: the browser will not delete this data when space runs low.',
+  'set.persistNo': 'Storage is not persistent yet: the browser may delete this data when space runs low. Download a backup regularly.',
+  'set.persistAsk': 'Request persistent storage',
+  'set.persistGranted': 'Persistent storage enabled.',
+  'set.persistDenied': 'The browser has not allowed it yet. It is usually granted after regular use or once the app is installed as a PWA.',
+  'set.pwaTitle': 'PWA & Offline Storage',
+  'set.pwaDesc': 'This app is offline-first and uses the browser IndexedDB, with no external server.',
+
+  'remind.text': "It has been {days} days since your last backup (or you never made one). Your data lives only in this browser.",
+  'remind.never': "You have never made a backup. Your data lives only in this browser.",
+  'remind.go': 'Open Backup',
+  'remind.later': 'Remind me later',
+
+  'field.front': 'Front (kanji / vocabulary)',
+  'field.back': 'Reading (hiragana)',
+  'field.meaning': 'Meaning',
+  'field.example_jp': 'Example sentence',
+  'field.example_hiragana': 'Sentence reading',
+  'field.example_id': 'Sentence meaning',
+  'field.hint': 'Hint',
+  'field.extra': 'Notes / extra media',
+
+  'card.frontRequired': 'The Front field is required.',
+  'card.extraLabel': 'Notes / extra media (optional, shown on the back)',
+  'card.attach': 'Attach image / audio / video',
+  'card.attachFail': 'Failed to attach: {err}',
+};
+
+const DICT: Record<Lang, Record<MsgKey, string>> = { id: ID as unknown as Record<MsgKey, string>, en: EN };
+
+export function currentLang(): Lang {
+  try {
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('inka_language') : null;
+    if (saved === 'en' || saved === 'id') return saved;
+  } catch {
+    /* localStorage tidak tersedia */
+  }
+  return 'id';
+}
+
+export type MsgParams = Record<string, string | number>;
+
+export function format(template: string, params?: MsgParams): string {
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (m, k: string) => (k in params ? String(params[k]) : m));
+}
+
+export function msgIn(lang: Lang, key: MsgKey, params?: MsgParams): string {
+  return format(DICT[lang][key] ?? DICT.id[key] ?? key, params);
+}
+
+/** Untuk service/non-React: memakai bahasa tersimpan saat dipanggil. */
+export function msg(key: MsgKey, params?: MsgParams): string {
+  return msgIn(currentLang(), key, params);
+}
+
+export const messageKeys = Object.keys(ID) as MsgKey[];
+export const messageDicts = DICT;

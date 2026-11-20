@@ -2,8 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Volume2 } from 'lucide-react';
 import type { Flashcard as FlashcardType } from '../types/flashcard';
-import { isSpeechSupported } from '../services/tts';
-import { toSpeechText } from '../services/richText';
+import { isSpeechSupported, speakableText } from '../services/tts';
 import { RichText } from './RichText';
 import { useTranslation } from '../context/useTranslation';
 
@@ -24,7 +23,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
   onSpeak,
 }) => {
   const { t } = useTranslation();
-  const canSpeak = !!onSpeak && isSpeechSupported() && !!toSpeechText(card.back || card.front);
+  const canSpeak = !!onSpeak && isSpeechSupported() && !!speakableText(card);
 
   return (
     <div

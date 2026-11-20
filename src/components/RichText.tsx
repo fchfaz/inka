@@ -1,3 +1,4 @@
+import { useMsg } from '../context/useMsg';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ImageOff, Music, VideoOff } from 'lucide-react';
 import { parseRich, type RichNode } from '../services/richText';
@@ -19,12 +20,13 @@ function useMediaUrl(key: string): { url: string | null; failed: boolean } {
 const stop = (e: React.SyntheticEvent) => e.stopPropagation(); // jangan membalik kartu saat menyentuh pemutar
 
 const MediaView: React.FC<{ kind: 'img' | 'sound' | 'video'; mediaKey: string }> = ({ kind, mediaKey }) => {
+  const m = useMsg();
   const { url, failed } = useMediaUrl(mediaKey);
   if (failed) {
     const Icon = kind === 'img' ? ImageOff : kind === 'video' ? VideoOff : Music;
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-slate-400" title="Media tidak ditemukan">
-        <Icon className="w-4 h-4" /> media hilang
+      <span className="inline-flex items-center gap-1 text-xs text-slate-400" title={m('media.missingTitle')}>
+        <Icon className="w-4 h-4" /> {m('media.missing')}
       </span>
     );
   }

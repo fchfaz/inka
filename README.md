@@ -41,3 +41,14 @@ npm test         # unit test (vitest + fake-indexeddb)
 
 ## Tes
 `npm test` (unit + integrasi dengan paket Anki asli di `src/services/anki/__fixtures__`, dibuat oleh pustaka resmi Anki).
+
+## Penyimpanan dan backup
+- Aplikasi meminta **penyimpanan permanen** (`navigator.storage.persist`) saat dibuka; statusnya terlihat di Pengaturan, lengkap dengan tombol meminta ulang.
+- **Pengingat backup**: banner muncul bila sudah 14 hari sejak backup terakhir (atau sejak pertama dipakai) dan ada kartu. "Ingatkan nanti" menunda 3 hari; mengunduh backup mereset hitungan.
+- Media yang tak dirujuk kartu mana pun **dihapus otomatis** setelah menghapus kartu/deck dan setelah memulihkan backup. Selama impor atau pemulihan berlangsung, pembersihan ditunda agar media baru tidak ikut terhapus.
+
+## Suara (TTS)
+Tombol suara dan pembacaan otomatis hanya aktif bila teks mengandung huruf Jepang (bacaan, lalu sisi depan, lalu arti untuk kartu kebalikan). Kartu seperti "kucing → 猫" tidak lagi membacakan kata Indonesia dengan suara Jepang.
+
+## Bahasa
+Pesan fitur impor Anki, media, backup, pengingat, dan seluruh halaman Pengaturan tersedia dalam Indonesia dan English lewat `src/services/messages.ts` (komponen: `useMsg()`, service: `msg()`). Tes memastikan kunci dan placeholder kedua bahasa selalu sama. Teks lama di Kelola Deck dan Statistik masih memakai katalog `i18n.ts` yang sebagian kuncinya belum terhubung.

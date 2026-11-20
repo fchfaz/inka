@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from '../context/useTranslation';
+import { useMsg } from '../context/useMsg';
 import type { Deck, Flashcard } from '../types/flashcard';
 import {
   getAllDecks,
@@ -19,7 +20,7 @@ import {
 } from '../services/importExport';
 import { cardState } from '../services/srs';
 import { toPlainText } from '../services/richText';
-import { addMediaFile, MediaStorageError } from '../services/media';
+import { addMediaFile, MediaStorageError, pruneUnusedMedia } from '../services/media';
 import { AnkiImportDialog } from '../components/AnkiImportDialog';
 import {
   Plus,
@@ -66,6 +67,7 @@ interface DeckManagerProps {
 
 export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectDeck }) => {
   const { t } = useTranslation();
+  const m = useMsg();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(currentDeck);
   const [cards, setCards] = useState<Flashcard[]>([]);
@@ -181,6 +183,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
   const handleDeleteDeck = async (deck: Deck) => {
     if (confirm(`Yakin ingin menghapus deck "${deck.name}" beserta semua kartunya?`)) {
       await deleteDeck(deck.id);
+      void pruneUnusedMedia().catch(() => undefined); // media milik deck ini tidak dirujuk lagi
       await refreshDecks();
       notify(`Deck "${deck.name}" telah dihapus.`);
     }
@@ -211,7 +214,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
     if (!selectedDeck) return;
 
     if (!cardFormData.front || !cardFormData.front.trim()) {
-      alert('Kolom Depan wajib diisi.');
+      alert(m('card.frontRequired'));
       return;
     }
 
@@ -243,6 +246,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
   const handleDeleteCard = async (card: Flashcard) => {
     if (confirm(`Hapus kartu "${toPlainText(card.front)}"?`)) {
       await deleteCard(card.id);
+      void pruneUnusedMedia().catch(() => undefined);
       if (selectedDeck) {
         await refreshCards(selectedDeck.id);
       }
@@ -406,7 +410,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
             onClick={() => setShowAnkiImport(true)}
             className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs sm:text-sm font-medium hover:bg-indigo-100 transition"
           >
-            <FileArchive size={16} /> Import Anki (.apkg)
+            <FileArchive size={16} /> {t.importAnkiBtn}
           </button>
         </div>
       </div>
@@ -732,7 +736,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Catatan / media tambahan (opsional, tampil di sisi belakang)
+                  {m('card.extraLabel')}
                 </label>
                 <textarea
                   rows={2}
@@ -741,7 +745,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
                 />
                 <label data-sfx="file" className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs cursor-pointer hover:bg-slate-200">
-                  <Paperclip size={14} /> Lampirkan gambar / audio / video
+                  <Paperclip size={14} /> {m('card.attach')}
                   <input
                     type="file"
                     accept="image/*,audio/*,video/*"
@@ -754,7 +758,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
                         const token = await addMediaFile(file);
                         setCardFormData((d) => ({ ...d, extra: d.extra ? `${d.extra} ${token}` : token }));
                       } catch (err) {
-                        alert(err instanceof MediaStorageError ? err.message : `Gagal melampirkan: ${(err as Error).message}`);
+                        alert(err instanceof MediaStorageError ? err.message : m('card.attachFail', { err: (err as Error).message }));
                       }
                     }}
                   />

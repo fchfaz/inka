@@ -1,3 +1,4 @@
+import { msg } from './messages';
 import type {
   Deck,
   Flashcard,
@@ -11,7 +12,7 @@ import { getDB, getAllDecks, getCardsByDeck } from './database';
 import { convertAnkiNoteToRecallioCard } from './ankiImport';
 import { Zip, ZipDeflate, ZipPassThrough, strToU8, strFromU8, unzipSync } from 'fflate';
 import { stripMediaTokens } from './richText';
-import { mimeFromName, putMediaBatch, type MediaRecord } from './media';
+import { mimeFromName, pruneUnusedMedia, putMediaBatch, withMediaWrite, type MediaRecord } from './media';
 
 const REQUIRED_CARD_FIELDS: (keyof RecallioBundleCard)[] = [
   'front',
@@ -24,21 +25,21 @@ const REQUIRED_CARD_FIELDS: (keyof RecallioBundleCard)[] = [
 
 export function validateRecallioBundle(data: unknown): { valid: boolean; error?: string; data?: RecallioBundle } {
   if (!data || typeof data !== 'object') {
-    return { valid: false, error: 'JSON harus berupa object valid.' };
+    return { valid: false, error: msg('bundle.notObject') };
   }
 
   const bundle = data as Partial<RecallioBundle>;
 
   if (bundle.schema !== 'recallio.deck-bundle') {
-    return { valid: false, error: 'Schema tidak valid. Harus "recallio.deck-bundle".' };
+    return { valid: false, error: msg('bundle.wrongSchema') };
   }
 
   if (typeof bundle.version !== 'number') {
-    return { valid: false, error: 'Field "version" harus berupa angka.' };
+    return { valid: false, error: msg('bundle.versionNumber') };
   }
 
   if (!Array.isArray(bundle.decks) || bundle.decks.length === 0) {
-    return { valid: false, error: 'Field "decks" harus berupa array dan minimal memiliki 1 deck.' };
+    return { valid: false, error: msg('bundle.decksArray') };
   }
 
   for (let i = 0; i < bundle.decks.length; i++) {
@@ -309,9 +310,9 @@ export function parseCardsFromText(text: string): RecallioBundleCard[] {
 export async function importCardsFromText(text: string, deckId: string): Promise<ImportResult> {
   const db = await getDB();
   const deck: Deck | undefined = await db.get('decks', deckId);
-  if (!deck) throw new Error('Deck tujuan tidak ditemukan.');
+  if (!deck) throw new Error(msg('csv.noDeck'));
   const cards = parseCardsFromText(text);
-  if (cards.length === 0) throw new Error('Tidak ada baris kartu yang terbaca dari file.');
+  if (cards.length === 0) throw new Error(msg('csv.noRows'));
   return importRecallioBundle({
     schema: 'recallio.deck-bundle',
     version: 1,
@@ -343,12 +344,12 @@ export async function exportFullBackup(): Promise<InkaBackup> {
 }
 
 export function validateFullBackup(data: unknown): { valid: boolean; error?: string; data?: InkaBackup } {
-  if (!data || typeof data !== 'object') return { valid: false, error: 'File bukan JSON object.' };
+  if (!data || typeof data !== 'object') return { valid: false, error: msg('backup.notObject') };
   const b = data as Partial<InkaBackup>;
-  if (b.schema !== 'inka.backup') return { valid: false, error: 'Bukan file backup Inka (schema "inka.backup").' };
-  if (b.version !== 1) return { valid: false, error: 'Versi backup tidak didukung.' };
+  if (b.schema !== 'inka.backup') return { valid: false, error: msg('backup.wrongSchema') };
+  if (b.version !== 1) return { valid: false, error: msg('backup.wrongVersion') };
   if (!Array.isArray(b.decks) || !Array.isArray(b.cards) || !Array.isArray(b.revlog)) {
-    return { valid: false, error: 'Backup rusak: decks, cards, atau revlog tidak ada.' };
+    return { valid: false, error: msg('backup.corrupt') };
   }
   return { valid: true, data: b as InkaBackup };
 }
@@ -358,6 +359,7 @@ export async function restoreFullBackup(
   backup: InkaBackup,
   media: Array<{ key: string; mime: string; data: ArrayBuffer }> = []
 ): Promise<{ decks: number; cards: number; logs: number; media: number }> {
+  return withMediaWrite(async () => {
   // Media lebih dulu (idempoten, kunci = hash isi). Bila nanti gagal, yang tersisa hanya media yatim yang bisa dibersihkan.
   for (let i = 0; i < media.length; i += 25) await putMediaBatch(media.slice(i, i + 25));
   const db = await getDB();
@@ -377,6 +379,11 @@ export async function restoreFullBackup(
   // Backup sudah berformat FSRS, tidak perlu migrasi lagi.
   await tx.objectStore('session_state').put(true, 'migrated_fsrs_v1');
   return { decks: backup.decks.length, cards: backup.cards.length, logs: backup.revlog.length, media: media.length };
+  });
+  }).then(async (r) => {
+    // Media lama yang tidak ada di backup tidak dirujuk kartu mana pun lagi.
+    await pruneUnusedMedia().catch(() => undefined);
+    return r;
   });
 }
 
@@ -437,7 +444,7 @@ export async function createBackupFile(): Promise<BackupFile> {
     cursor = await cursor.continue();
   }
   zip.end();
-  if (zipError) throw new Error(`Gagal membuat berkas backup: ${(zipError as Error).message}`);
+  if (zipError) throw new Error(msg('backup.makeFail', { err: (zipError as Error).message }));
   return { blob: new Blob(parts, { type: 'application/zip' }), filename: `inka-backup-${day}.zip`, backup, mediaCount };
 }
 
@@ -464,9 +471,9 @@ export function parseBackupBytes(bytes: Uint8Array): {
     try {
       files = unzipSync(bytes);
     } catch {
-      throw new Error('Arsip backup rusak atau tidak lengkap.');
+      throw new Error(msg('backup.zipBroken'));
     }
-    if (!files['backup.json']) throw new Error('Arsip ini bukan backup Inka (backup.json tidak ada).');
+    if (!files['backup.json']) throw new Error(msg('backup.noJson'));
     jsonText = strFromU8(files['backup.json']);
     for (const [name, data] of Object.entries(files)) {
       if (!name.startsWith('media/') || name.length <= 6) continue;
@@ -481,9 +488,9 @@ export function parseBackupBytes(bytes: Uint8Array): {
   try {
     parsed = JSON.parse(jsonText);
   } catch {
-    throw new Error('Berkas bukan JSON/ZIP backup yang valid.');
+    throw new Error(msg('backup.notJson'));
   }
   const v = validateFullBackup(parsed);
-  if (!v.valid || !v.data) throw new Error(v.error ?? 'Backup tidak valid.');
+  if (!v.valid || !v.data) throw new Error(v.error ?? msg('backup.invalid'));
   return { backup: v.data, media };
 }

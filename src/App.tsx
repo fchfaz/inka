@@ -2,12 +2,15 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Study } from './pages/Study';
 import { DeckManager } from './pages/DeckManager';
 import { Settings } from './pages/Settings';
-import { initializeDefaultDeck, getAllDecks, getSettings, migrateLegacyProgress } from './services/database';
+import { initializeDefaultDeck, getAllDecks, getDB, getSettings, migrateLegacyProgress } from './services/database';
 import { installSfxListener } from './services/sfx';
+import { backupReminder, ensureFirstSeen, snoozeBackupReminder } from './services/backupReminder';
+import { isStoragePersistent, requestPersistentStorage } from './services/media';
+import { useMsg } from './context/useMsg';
 import { LanguageProvider } from './context/LanguageContext';
 import { useTranslation } from './context/useTranslation';
 import type { Deck } from './types/flashcard';
-import { BookMarked, FolderKanban, BarChart3, Sliders, Clock } from 'lucide-react';
+import { BookMarked, FolderKanban, BarChart3, Sliders, Clock, ShieldAlert } from 'lucide-react';
 
 const Statistics = lazy(() =>
   import('./pages/Statistics').then((module) => ({ default: module.Statistics }))
@@ -15,6 +18,8 @@ const Statistics = lazy(() =>
 
 function MainContent() {
   const { t } = useTranslation();
+  const m = useMsg();
+  const [reminder, setReminder] = useState<{ never: boolean; days: number } | null>(null);
   const [currentPage, setCurrentPage] = useState<'study' | 'decks' | 'stats' | 'settings'>('study');
   const [currentDeck, setCurrentDeck] = useState<Deck | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -48,6 +53,18 @@ function MainContent() {
       const decks = await getAllDecks();
       if (decks.length > 0) {
         setCurrentDeck(decks[0]);
+      }
+
+      // Data hanya ada di browser: minta penyimpanan permanen (diam-diam) dan ingatkan backup berkala.
+      try {
+        ensureFirstSeen();
+        if (!(await isStoragePersistent())) void requestPersistentStorage();
+        const db = await getDB();
+        const hasData = (await db.count('cards')) > 0;
+        const r = backupReminder(hasData);
+        if (r.remind) setReminder({ never: r.never, days: r.days });
+      } catch {
+        /* pengingat bersifat opsional */
       }
     }
     init();
@@ -130,6 +147,33 @@ function MainContent() {
           </nav>
         </div>
       </header>
+
+      {reminder && (
+        <div role="status" className="w-full bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200">
+          <div className="max-w-6xl mx-auto px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm">
+            <ShieldAlert size={16} className="shrink-0" />
+            <span className="flex-1 min-w-[12rem]">{reminder.never ? m('remind.never') : m('remind.text', { days: reminder.days })}</span>
+            <button
+              onClick={() => {
+                setReminder(null);
+                setCurrentPage('settings');
+              }}
+              className="font-semibold underline underline-offset-2"
+            >
+              {m('remind.go')}
+            </button>
+            <button
+              onClick={() => {
+                snoozeBackupReminder();
+                setReminder(null);
+              }}
+              className="opacity-80 hover:opacity-100"
+            >
+              {m('remind.later')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col justify-center items-center py-6 px-2 sm:px-4">
