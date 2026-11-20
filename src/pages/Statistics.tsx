@@ -183,7 +183,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
 
   if (isLoading) {
     return (
-      <div className="w-full max-w-4xl mx-auto py-16 flex flex-col items-center justify-center text-slate-500">
+      <div className="w-full max-w-4xl mx-auto py-16 flex flex-col items-center justify-center text-slate-500 dark:text-slate-400">
         <Clock className="w-8 h-8 animate-spin text-indigo-500 mb-3" />
         <span className="text-sm">Menghitung statistik pembelajaran...</span>
       </div>
@@ -198,7 +198,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed top-20 right-6 z-50 flex items-center gap-2 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-2.5 rounded-xl shadow-xl text-xs sm:text-sm font-semibold border border-slate-700">
-          <CheckCircle2 size={16} className="text-emerald-500" />
+          <CheckCircle2 size={16} className="text-emerald-600" />
           <span>{toastMsg}</span>
         </div>
       )}
@@ -210,7 +210,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
             <BarChart3 className="w-6 h-6 text-indigo-500" />
             {t.statsTitle}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             {t.statsSubtitle}
           </p>
         </div>
@@ -226,7 +226,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
             >
               <BookOpen className="w-4 h-4 text-indigo-500" />
               <span className="max-w-[140px] truncate">{currentDeckName}</span>
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isDeckDropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-600 dark:text-slate-400 transition-transform ${isDeckDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {isDeckDropdownOpen && (
@@ -325,52 +325,52 @@ export const Statistics: React.FC<StatisticsProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* Hari Ini */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
+          <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 mb-1">
             <span className="text-[11px] font-bold uppercase tracking-wider">Hari Ini</span>
             <Target className="w-4 h-4 text-indigo-500" />
           </div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white">
             {stats.todayCardsStudied}
           </div>
-          <span className="text-[11px] text-slate-400">kartu dipelajari</span>
+          <span className="text-[11px] text-slate-600 dark:text-slate-400">kartu dipelajari</span>
         </div>
 
         {/* Waktu Belajar Hari Ini */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
+          <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 mb-1">
             <span className="text-[11px] font-bold uppercase tracking-wider">Waktu Hari Ini</span>
-            <Clock className="w-4 h-4 text-sky-500" />
+            <Clock className="w-4 h-4 text-sky-600" />
           </div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white">
             {Math.round(stats.todayDurationMs / 60000)} <span className="text-sm font-normal">mnt</span>
           </div>
-          <span className="text-[11px] text-slate-400">
+          <span className="text-[11px] text-slate-600 dark:text-slate-400">
             {stats.todayAvgSecPerCard > 0 ? `${stats.todayAvgSecPerCard} dtk/kartu` : '0 dtk/kartu'}
           </span>
         </div>
 
         {/* Tingkat Benar (Pass Rate) Hari Ini */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
+          <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 mb-1">
             <span className="text-[11px] font-bold uppercase tracking-wider">Pass Rate Hari Ini</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white">
             {stats.todayPassRate}%
           </div>
-          <span className="text-[11px] text-slate-400">Hard, Good, Easy</span>
+          <span className="text-[11px] text-slate-600 dark:text-slate-400">Hard, Good, Easy</span>
         </div>
 
         {/* Streak Berturut-turut */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
+          <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 mb-1">
             <span className="text-[11px] font-bold uppercase tracking-wider">Streak</span>
-            <Flame className="w-4 h-4 text-amber-500" />
+            <Flame className="w-4 h-4 text-amber-600" />
           </div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white">
             {stats.currentStreakDays} <span className="text-sm font-normal">hari</span>
           </div>
-          <span className="text-[11px] text-slate-400">Terpanjang: {stats.longestStreakDays} hari</span>
+          <span className="text-[11px] text-slate-600 dark:text-slate-400">Terpanjang: {stats.longestStreakDays} hari</span>
         </div>
       </div>
 
@@ -380,7 +380,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
           <span>
             Hari ini Anda telah mempelajari <b>{stats.todayCardsStudied} kartu</b> dalam <b>{Math.max(1, Math.round(stats.todayDurationMs / 60000))} menit</b> ({stats.todayAvgSecPerCard} detik/kartu).
           </span>
-          <span className="text-[11px] text-slate-400 hidden sm:inline">Reset harian: 03:00 pagi</span>
+          <span className="text-[11px] text-slate-600 dark:text-slate-400 hidden sm:inline">Reset harian: 03:00 pagi</span>
         </div>
       )}
 
@@ -392,12 +392,12 @@ export const Statistics: React.FC<StatisticsProps> = ({
               <CalendarDays className="w-4 h-4 text-indigo-500" />
               Kalender Aktivitas
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Intensitas review harian dengan batas pergantian hari pukul 03:00 pagi.
             </p>
           </div>
           <div className="text-right text-xs">
-            <span className="text-slate-400">Rata-rata: </span>
+            <span className="text-slate-600 dark:text-slate-400">Rata-rata: </span>
             <b className="text-slate-900 dark:text-white">{stats.avgDailyReviews} review/hari</b>
           </div>
         </div>
@@ -415,7 +415,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
             <BarChart3 className="w-4 h-4 text-indigo-500" />
             Jumlah Review & Waktu Belajar
           </h3>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Volume kartu yang dijawab dan distribusi tombol review pada rentang waktu terpilih.
           </p>
         </div>
@@ -445,18 +445,18 @@ export const Statistics: React.FC<StatisticsProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
-                <Target className="w-4 h-4 text-emerald-500" />
+                <Target className="w-4 h-4 text-emerald-600" />
                 Distribusi Tombol Jawaban
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Tingkat kelulusan (Pass Rate) = (Hard + Good + Easy) / Total.
               </p>
             </div>
             <div className="text-right">
-              <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+              <span className="text-xl font-bold text-emerald-700 dark:text-emerald-400">
                 {stats.overallPassRate}%
               </span>
-              <span className="text-[10px] block text-slate-400">Pass Rate</span>
+              <span className="text-[10px] block text-slate-600 dark:text-slate-400">Pass Rate</span>
             </div>
           </div>
 
@@ -472,13 +472,13 @@ export const Statistics: React.FC<StatisticsProps> = ({
 
           <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
             <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-              <span className="text-slate-400 text-[11px] block">Kartu Pertama Kali</span>
+              <span className="text-slate-600 dark:text-slate-400 text-[11px] block">Kartu Pertama Kali</span>
               <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">
                 {stats.firstReviewPassRate}% lulus
               </span>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-              <span className="text-slate-400 text-[11px] block">Kartu Diulang</span>
+              <span className="text-slate-600 dark:text-slate-400 text-[11px] block">Kartu Diulang</span>
               <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">
                 {stats.repeatedReviewPassRate}% lulus
               </span>
@@ -494,11 +494,11 @@ export const Statistics: React.FC<StatisticsProps> = ({
                 <Layers className="w-4 h-4 text-indigo-500" />
                 Status Penguasaan Kartu
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Dihitung berdasarkan rating review terakhir tiap kartu.
               </p>
             </div>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-slate-600 dark:text-slate-400">
               Total {stats.cardCounts.totalDeckCards} kartu
             </span>
           </div>
@@ -535,7 +535,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
             ariaLabel="Status penguasaan kartu"
           />
 
-          <p className="text-[11px] text-slate-400 bg-slate-50 dark:bg-slate-800/40 p-2 rounded-lg leading-relaxed">
+          <p className="text-[11px] text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/40 p-2 rounded-lg leading-relaxed">
             <b>Definisi:</b> Baru = Belum pernah direview. Lemah = Terakhir dinilai Again/Hard. Baik = Terakhir Good. Kuat = Terakhir Easy.
           </p>
         </div>
@@ -551,7 +551,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
                 <ListOrdered className="w-4 h-4 text-violet-500" />
                 Jadwal Review Mendatang
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Kartu yang sudah dipelajari dikelompokkan menurut tanggal jatuh temponya (FSRS).
               </p>
             </div>
@@ -601,7 +601,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
               <Clock className="w-4 h-4 text-indigo-500" />
               Pola Jam Belajar
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Aktivitas belajar per jam sepanjang hari (waktu lokal perangkat).
             </p>
           </div>
@@ -619,13 +619,13 @@ export const Statistics: React.FC<StatisticsProps> = ({
               <AlertTriangle className="w-4 h-4 text-rose-500" />
               Kartu Paling Sering Diulang (Leeches)
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Kosakata dengan jumlah tombol 'Again' terbanyak yang memerlukan latihan ekstra.
             </p>
           </div>
 
           {stats.problemCards.length === 0 ? (
-            <div className="py-8 text-center text-xs text-slate-400">
+            <div className="py-8 text-center text-xs text-slate-600 dark:text-slate-400">
               Belum ada kartu dengan catatan 'Again'. Luar biasa!
             </div>
           ) : (
@@ -633,12 +633,12 @@ export const Statistics: React.FC<StatisticsProps> = ({
               {stats.problemCards.map((item, idx) => (
                 <div key={item.card.id || idx} className="py-2.5 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-[11px] font-bold text-slate-400 w-4">{idx + 1}.</span>
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 w-4">{idx + 1}.</span>
                     <div className="truncate">
                       <span className="font-japanese text-sm font-bold text-slate-900 dark:text-white mr-2">
                         {toPlainText(item.card.front)}
                       </span>
-                      <span className="text-slate-400 font-japanese text-[11px] mr-1.5">
+                      <span className="text-slate-600 dark:text-slate-400 font-japanese text-[11px] mr-1.5">
                         ({toPlainText(item.card.back)})
                       </span>
                       <span className="text-slate-600 dark:text-slate-300 truncate">
@@ -650,7 +650,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
                     <span className="px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-bold text-[11px]">
                       {item.againCount}x Again
                     </span>
-                    <span className="text-slate-400 text-[11px]">
+                    <span className="text-slate-600 dark:text-slate-400 text-[11px]">
                       Pass {item.passRate}%
                     </span>
                   </div>
@@ -666,23 +666,23 @@ export const Statistics: React.FC<StatisticsProps> = ({
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
-                <Clock className="w-4 h-4 text-sky-500" />
+                <Clock className="w-4 h-4 text-sky-600" />
                 Kecepatan Menjawab per Kartu
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Rata-rata dan median waktu berpikir sebelum menekan tombol jawaban.
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                <span className="text-[11px] text-slate-400 block mb-0.5">Rata-rata Keseluruhan</span>
+                <span className="text-[11px] text-slate-600 dark:text-slate-400 block mb-0.5">Rata-rata Keseluruhan</span>
                 <span className="text-lg font-bold text-slate-900 dark:text-white">
                   {(stats.timeStats.overallAvgMs / 1000).toFixed(1)} <span className="text-xs font-normal">detik</span>
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                <span className="text-[11px] text-slate-400 block mb-0.5">Median Waktu</span>
+                <span className="text-[11px] text-slate-600 dark:text-slate-400 block mb-0.5">Median Waktu</span>
                 <span className="text-lg font-bold text-slate-900 dark:text-white">
                   {(stats.timeStats.overallMedianMs / 1000).toFixed(1)} <span className="text-xs font-normal">detik</span>
                 </span>
@@ -717,14 +717,14 @@ export const Statistics: React.FC<StatisticsProps> = ({
                   <PlusCircle className="w-4 h-4 text-indigo-500" />
                   Penambahan Kosakata
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Total {cards.length} kartu terdaftar pada deck ini.
                 </p>
               </div>
             </div>
 
             {stats.addedTimeline.length === 0 ? (
-              <div className="text-xs text-slate-400 py-2">Belum ada riwayat tanggal pembuatan.</div>
+              <div className="text-xs text-slate-600 dark:text-slate-400 py-2">Belum ada riwayat tanggal pembuatan.</div>
             ) : (
               <div className="flex items-end gap-1 h-14 pt-2">
                 {stats.addedTimeline.map((item, idx) => (
@@ -743,7 +743,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
       </div>
 
       {/* Footer Info Box */}
-      <div className="p-4 rounded-2xl bg-slate-100/60 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500 space-y-1.5">
+      <div className="p-4 rounded-2xl bg-slate-100/60 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 space-y-1.5">
         <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
           <Info size={15} className="text-indigo-500" />
           <span>Catatan Penjadwalan Inka</span>
@@ -763,7 +763,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
           <span className="text-slate-300 dark:text-slate-700">|</span>
           <button
             onClick={handleClearLogs}
-            className="text-slate-400 hover:text-rose-500 hover:underline"
+            className="text-slate-600 dark:text-slate-400 hover:text-rose-500 hover:underline"
           >
             Bersihkan Riwayat Log
           </button>

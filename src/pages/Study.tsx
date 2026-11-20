@@ -368,7 +368,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] text-slate-500">
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-slate-500 dark:text-slate-400">
         <RefreshCw className="w-8 h-8 animate-spin mb-3 text-indigo-500" />
         <p className="text-sm">{t.loadingFlashcard}</p>
       </div>
@@ -378,7 +378,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
   if (!currentDeck || cardCount === 0) {
     return (
       <div className="max-w-md mx-auto text-center py-12 px-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm mt-8">
-        <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+        <AlertCircle className="w-12 h-12 text-amber-600 mx-auto mb-4" />
         <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{t.emptyDeckTitle}</h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
           {t.emptyDeckDesc}
@@ -419,12 +419,12 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
           >
             <BookOpen className="w-4 h-4 text-indigo-500" />
             <span className="max-w-[200px] truncate">{currentDeck.name}</span>
-            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isDeckDropdownOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-600 dark:text-slate-400 transition-transform ${isDeckDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {isDeckDropdownOpen && (
             <div className="absolute left-0 mt-1.5 w-64 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl z-50 py-1.5 max-h-60 overflow-y-auto">
-              <div className="px-3 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t.deckDropdownTitle}</div>
+              <div className="px-3 py-1 text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">{t.deckDropdownTitle}</div>
               {decks.map((deck) => (
                 <button
                   key={deck.id}
@@ -460,7 +460,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
         <div className="flex items-center gap-3" aria-label={t.queueRemaining}>
           {chip(t.queueNew, counts.newCount, 'text-sky-600 dark:text-sky-400', current?.kind === 'new')}
           {chip(t.queueLearning, counts.learningCount, 'text-rose-600 dark:text-rose-400', current?.kind === 'learning')}
-          {chip(t.queueReview, counts.reviewCount, 'text-emerald-600 dark:text-emerald-400', current?.kind === 'review')}
+          {chip(t.queueReview, counts.reviewCount, 'text-emerald-700 dark:text-emerald-400', current?.kind === 'review')}
         </div>
       </div>
 
@@ -476,7 +476,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
           />
 
           {/* Aksi kartu */}
-          <div className="w-full max-w-xl flex items-center justify-center gap-1 mb-3 text-slate-500">
+          <div className="w-full max-w-xl flex items-center justify-center gap-1 mb-3 text-slate-500 dark:text-slate-400">
             <button
               data-sfx="none"
               onClick={handleUndo}
@@ -520,7 +520,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
         </>
       ) : (
         <div className="w-full max-w-md mx-auto text-center py-10 px-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
-          <PartyPopper className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+          <PartyPopper className="w-12 h-12 text-emerald-600 mx-auto mb-3" />
           <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{t.sessionFinishedTitle}</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
             {nextLearningAt

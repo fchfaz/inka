@@ -14,14 +14,14 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ data, ariaLabel }) => 
   return (
     <div className="space-y-3" role="img" aria-label={ariaLabel}>
       {/* Tooltip display */}
-      <div className="flex items-center justify-between text-xs text-slate-500">
+      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
         <span>Jam 00:00 - 23:00 (Waktu Lokal)</span>
         {hoveredHour ? (
           <span className="font-semibold text-slate-900 dark:text-white">
             Pukul {String(hoveredHour.hour).padStart(2, '0')}:00 – {hoveredHour.totalReviews} review (Pass {hoveredHour.passRate}%)
           </span>
         ) : (
-          <span className="text-slate-400">Arahkan kursor ke bar untuk melihat rincian</span>
+          <span className="text-slate-600 dark:text-slate-400">Arahkan kursor ke bar untuk melihat rincian</span>
         )}
       </div>
 
@@ -39,7 +39,7 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ data, ariaLabel }) => 
                 className="w-full bg-indigo-500/80 group-hover:bg-indigo-600 dark:bg-indigo-600 dark:group-hover:bg-indigo-400 rounded-t-sm transition-all duration-150"
                 style={{ height: `${heightPct}%` }}
               />
-              <span className="text-[9px] text-slate-400 mt-1 truncate">
+              <span className="text-[9px] text-slate-600 dark:text-slate-400 mt-1 truncate">
                 {item.hour % 3 === 0 ? String(item.hour).padStart(2, '0') : ''}
               </span>
             </div>

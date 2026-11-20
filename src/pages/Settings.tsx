@@ -141,7 +141,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
     <div className="w-full max-w-2xl mx-auto px-4 py-6 space-y-6">
       <div className="pb-3 border-b border-slate-200 dark:border-slate-800">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{t.settingsTitle}</h2>
-        <p className="text-sm text-slate-500">{t.settingsSubtitle}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t.settingsSubtitle}</p>
       </div>
 
       {message && (
@@ -165,7 +165,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
           </div>
           <div>
             <h4 className="font-semibold text-slate-800 dark:text-white text-base">{t.languageTitle}</h4>
-            <p className="text-xs text-slate-500">{t.languageSubtitle}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t.languageSubtitle}</p>
           </div>
         </div>
 
@@ -203,7 +203,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
           </div>
           <div>
             <h4 className="font-semibold text-slate-800 dark:text-white text-base">{t.themeTitle}</h4>
-            <p className="text-xs text-slate-500">{t.themeSubtitle}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t.themeSubtitle}</p>
           </div>
         </div>
 
@@ -333,13 +333,13 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
             className="w-full"
           />
         </div>
-        <p className="text-xs text-slate-500">{m('set.sfxSaveHint')}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{m('set.sfxSaveHint')}</p>
       </div>
 
       {/* Backup */}
       <div className={`${card} space-y-3`}>
         <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-semibold">
-          <HardDriveDownload size={20} className="text-emerald-500" />
+          <HardDriveDownload size={20} className="text-emerald-600" />
           <h3>{m('set.backupTitle')}</h3>
         </div>
         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -357,7 +357,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
             <input type="file" accept=".json,.zip,application/json,application/zip" onChange={handleRestore} className="hidden" />
           </label>
         </div>
-        <p className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+        <p className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400">
           <AlertTriangle size={14} /> {m('set.backupWarn')}
         </p>
       </div>
@@ -366,7 +366,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
       {mediaStats && (
         <div className={`${card} space-y-3`}>
           <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-semibold">
-            <HardDriveDownload size={20} className="text-emerald-500" />
+            <HardDriveDownload size={20} className="text-emerald-600" />
             <h3>{m('set.mediaTitle')}</h3>
           </div>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
@@ -385,7 +385,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
       {/* PWA */}
       <div className={`${card} space-y-3`}>
         <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-semibold">
-          <Smartphone size={20} className="text-emerald-500" />
+          <Smartphone size={20} className="text-emerald-600" />
           <h3>{m('set.pwaTitle')}</h3>
         </div>
         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -393,7 +393,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
         </p>
         {persistent !== null && (
           <div className="space-y-2">
-            <p className={`text-xs ${persistent ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+            <p className={`text-xs ${persistent ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
               {persistent ? m('set.persistYes') : m('set.persistNo')}
             </p>
             {!persistent && (

@@ -28,7 +28,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
 
   if (data.length === 0) {
     return (
-      <div className="h-44 flex items-center justify-center text-xs text-slate-400">
+      <div className="h-44 flex items-center justify-center text-xs text-slate-600 dark:text-slate-400">
         Tidak ada data review pada rentang ini.
       </div>
     );
@@ -48,7 +48,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
     <div className="space-y-3" role="img" aria-label={ariaLabel}>
       {/* Mode Toggle Controls */}
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
           Tampilan Metrik
         </span>
         <div className="inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-xs">
@@ -134,7 +134,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
                 </div>
 
                 {/* X-axis Label */}
-                <span className="text-[10px] text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 mt-1.5 truncate max-w-full text-center">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-300 mt-1.5 truncate max-w-full text-center">
                   {bar.label}
                 </span>
               </div>

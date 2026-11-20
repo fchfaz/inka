@@ -31,7 +31,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
             </span>
           )}
           {scheduledDueCount > 0 && (
-            <span className="bg-rose-500 text-white px-2 py-0.5 rounded-md font-semibold animate-pulse">
+            <span className="bg-rose-600 text-white px-2 py-0.5 rounded-md font-semibold animate-pulse">
               {scheduledDueCount} giliran ulang!
             </span>
           )}

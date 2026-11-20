@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Volume2 } from 'lucide-react';
 import type { Flashcard as FlashcardType } from '../types/flashcard';
 import { isSpeechSupported, speakableText } from '../services/tts';
@@ -31,15 +30,12 @@ export const Flashcard: React.FC<FlashcardProps> = ({
       className="w-full max-w-xl aspect-[1.6/1] sm:h-[340px] cursor-pointer select-none perspective-1000 group my-2 notranslate"
       translate="no"
     >
-      <motion.div
+      <div
         className="w-full h-full relative transform-style-3d shadow-xl rounded-2xl"
-        initial={false}
-        animate={{ rotateY: isFlipped ? 180 : 0 }}
-        transition={
-          disableAnimation
-            ? { duration: 0 }
-            : { duration: 0.5, ease: [0.4, 0, 0.2, 1] }
-        }
+        style={{
+          transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          transition: disableAnimation ? 'none' : 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
       >
         {/* FRONT SIDE */}
         <div className="absolute inset-0 w-full h-full backface-hidden rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between">
@@ -57,7 +53,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
           </div>
 
           {card.hint ? (
-            <p className="text-center text-xs text-slate-400 dark:text-slate-500">💡 <RichText text={card.hint} /></p>
+            <p className="text-center text-xs text-slate-600 dark:text-slate-400">💡 <RichText text={card.hint} /></p>
           ) : (
             <div className="h-4" />
           )}
@@ -75,7 +71,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                     e.stopPropagation();
                     onSpeak?.();
                   }}
-                  className="p-1.5 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  className="p-1.5 rounded-full text-slate-600 dark:text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                   aria-label={t.actionVoice}
                   title={`${t.actionVoice} (R)`}
                 >
@@ -103,7 +99,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
             {/* Arti */}
             {card.meaning && (
               <div>
-                <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-1">
+                <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400 tracking-wider uppercase mb-1">
                   {t.meaningLabel}
                 </p>
                 <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
@@ -117,7 +113,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
               <>
                 <div className="w-full border-t border-slate-100 dark:border-slate-800/80" />
                 <div className="space-y-1">
-                  <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">
+                  <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400 tracking-wider uppercase">
                     {t.exampleUsageLabel}
                   </p>
                   <p className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100 font-japanese">
@@ -144,7 +140,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
             )}
           </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 };

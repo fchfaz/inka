@@ -140,7 +140,7 @@ export const AnkiImportDialog: React.FC<{ onClose: () => void; onDone: () => voi
         {stage === 'pick' && (
           <label data-sfx="file" className="block border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-8 text-center cursor-pointer hover:border-indigo-400">
             <p className="font-semibold">{m('dlg.pickTitle')}</p>
-            <p className="text-xs text-slate-500 mt-1">{m('dlg.pickHint')}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{m('dlg.pickHint')}</p>
             <input
               type="file"
               accept=".apkg,.colpkg,application/zip,application/x-zip-compressed,application/octet-stream,*/*"
@@ -174,7 +174,7 @@ export const AnkiImportDialog: React.FC<{ onClose: () => void; onDone: () => voi
                     </label>
                   </legend>
                   {isImageOcclusion(nt) && (
-                    <p className="text-xs text-amber-600 flex gap-1 mb-2"><AlertTriangle className="w-4 h-4 shrink-0" /> {m('dlg.occlusion')}</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 flex gap-1 mb-2"><AlertTriangle className="w-4 h-4 shrink-0" /> {m('dlg.occlusion')}</p>
                   )}
                   {st.enabled && (
                     <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1.5 items-center">
@@ -182,7 +182,7 @@ export const AnkiImportDialog: React.FC<{ onClose: () => void; onDone: () => voi
                         <React.Fragment key={f}>
                           <div className="min-w-0">
                             <span className="font-medium block">{f}</span>
-                            <span className="block text-xs text-slate-400 truncate">{sample(id, f)}</span>
+                            <span className="block text-xs text-slate-600 dark:text-slate-400 truncate">{sample(id, f)}</span>
                           </div>
                           <select
                             className={selectCls}
@@ -213,7 +213,7 @@ export const AnkiImportDialog: React.FC<{ onClose: () => void; onDone: () => voi
                 <label className="flex items-center gap-1"><input type="radio" name="deckmode" checked={deckMode === 'single'} onChange={() => setDeckMode('single')} /> {m('dlg.oneDeck')}</label>
                 <input disabled={deckMode !== 'single'} value={singleName} onChange={(e) => setSingleName(e.target.value)} aria-label={m('dlg.deckName')} className={selectCls + ' w-40'} />
               </div>
-              <p className="text-xs text-slate-500">{m('dlg.safeRepeat')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{m('dlg.safeRepeat')}</p>
             </div>
 
             <div className="flex justify-end gap-2 pt-1">
@@ -233,7 +233,7 @@ export const AnkiImportDialog: React.FC<{ onClose: () => void; onDone: () => voi
 
         {stage === 'done' && summary && (
           <div className="space-y-2 text-sm">
-            <p className="flex items-center gap-2 font-semibold text-emerald-600"><CheckCircle2 className="w-5 h-5" /> {m('dlg.done')}</p>
+            <p className="flex items-center gap-2 font-semibold text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="w-5 h-5" /> {m('dlg.done')}</p>
             <ul className="list-disc pl-5 text-slate-700 dark:text-slate-300">
               <li>{m('dlg.added', { n: summary.cardsAdded, d: summary.decksCreated })}</li>
               {summary.cardsSkipped > 0 && <li>{m('dlg.skipped', { n: summary.cardsSkipped })}</li>}
@@ -243,7 +243,7 @@ export const AnkiImportDialog: React.FC<{ onClose: () => void; onDone: () => voi
               {summary.skippedNotetypes.map((s) => <li key={s.name}>{m('dlg.ntSkipped', { n: s.cards, name: s.name, reason: s.reason === 'dinonaktifkan' ? m('dlg.reasonDisabled') : m('dlg.reasonUnknown') })}</li>)}
             </ul>
             {(summary.mediaMissing.length > 0 || summary.mediaSkipped.length > 0) && (
-              <p className="text-xs text-amber-600 flex gap-1"><AlertTriangle className="w-4 h-4 shrink-0" />
+              <p className="text-xs text-amber-700 dark:text-amber-400 flex gap-1"><AlertTriangle className="w-4 h-4 shrink-0" />
                 {summary.mediaMissing.length > 0 && <>{m('dlg.mediaMissing', { list: summary.mediaMissing.slice(0, 4).join(', ') + (summary.mediaMissing.length > 4 ? m('dlg.more', { n: summary.mediaMissing.length - 4 }) : '') })} </>}
                 {summary.mediaSkipped.length > 0 && <>{m('dlg.mediaSkipped', { list: summary.mediaSkipped.slice(0, 4).join(', ') + (summary.mediaSkipped.length > 4 ? m('dlg.more', { n: summary.mediaSkipped.length - 4 }) : '') })}</>}
               </p>

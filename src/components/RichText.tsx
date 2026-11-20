@@ -25,7 +25,7 @@ const MediaView: React.FC<{ kind: 'img' | 'sound' | 'video'; mediaKey: string }>
   if (failed) {
     const Icon = kind === 'img' ? ImageOff : kind === 'video' ? VideoOff : Music;
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-slate-400" title={m('media.missingTitle')}>
+      <span className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400" title={m('media.missingTitle')}>
         <Icon className="w-4 h-4" /> {m('media.missing')}
       </span>
     );

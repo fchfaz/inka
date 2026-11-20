@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { useTranslation } from '../context/useTranslation';
 import { useMsg } from '../context/useMsg';
 import type { Deck, Flashcard } from '../types/flashcard';
@@ -21,7 +21,6 @@ import {
 import { cardState } from '../services/srs';
 import { toPlainText } from '../services/richText';
 import { addMediaFile, MediaStorageError, pruneUnusedMedia } from '../services/media';
-import { AnkiImportDialog } from '../components/AnkiImportDialog';
 import {
   Plus,
   Trash2,
@@ -40,6 +39,11 @@ import {
   FileArchive,
   Paperclip,
 } from 'lucide-react';
+
+
+const AnkiImportDialog = lazy(() =>
+  import('../components/AnkiImportDialog').then((m) => ({ default: m.AnkiImportDialog }))
+);
 
 function summarizeImport(r: ImportResult): string {
   const parts = [`${r.cardsAdded} kartu ditambah`];
@@ -453,7 +457,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 text-slate-400 w-4 h-4" />
+              <Search className="absolute left-3 top-3 text-slate-600 dark:text-slate-400 w-4 h-4" />
               <input
                 type="text"
                 placeholder="Cari kanji, hiragana, atau arti..."
@@ -490,7 +494,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
           {/* Cards List Table/Grid */}
           <div className="overflow-x-auto">
             {filteredCards.length === 0 ? (
-              <div className="py-8 text-center text-slate-400 dark:text-slate-500 text-sm">
+              <div className="py-8 text-center text-slate-600 dark:text-slate-400 text-sm">
                 Tidak ada flashcard yang cocok dengan kriteria pencarian.
               </div>
             ) : (
@@ -518,16 +522,16 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
                       </td>
                       <td className="py-3 px-4 text-xs max-w-xs truncate" title={toPlainText(card.example_jp)}>
                         <div className="font-japanese font-medium text-slate-800 dark:text-slate-200">{toPlainText(card.example_jp)}</div>
-                        <div className="text-slate-400">{toPlainText(card.example_id)}</div>
+                        <div className="text-slate-600 dark:text-slate-400">{toPlainText(card.example_id)}</div>
                       </td>
                       <td className="py-3 px-4 text-xs whitespace-nowrap">
                         {card.suspended ? (
-                          <span className="text-amber-600 dark:text-amber-400 font-semibold">Ditangguhkan</span>
+                          <span className="text-amber-700 dark:text-amber-400 font-semibold">Ditangguhkan</span>
                         ) : (
                           <>
                             <span className="font-semibold">{STATE_LABEL[cardState(card)]}</span>
                             {card.srs && card.srs.state !== 0 && (
-                              <span className="text-slate-400"> · {formatDue(card.srs.due)}</span>
+                              <span className="text-slate-600 dark:text-slate-400"> · {formatDue(card.srs.due)}</span>
                             )}
                           </>
                         )}
@@ -545,7 +549,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => handleToggleSuspend(card)}
-                            className="p-1.5 text-slate-500 hover:text-amber-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-amber-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
                             title={card.suspended ? 'Aktifkan kembali' : 'Tangguhkan'}
                             aria-label={card.suspended ? 'Aktifkan kembali kartu' : 'Tangguhkan kartu'}
                           >
@@ -553,14 +557,14 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
                           </button>
                           <button
                             onClick={() => handleOpenEditCard(card)}
-                            className="p-1.5 text-slate-500 hover:text-indigo-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
                             title="Edit Kartu"
                           >
                             <Edit2 size={16} />
                           </button>
                           <button
                             onClick={() => handleDeleteCard(card)}
-                            className="p-1.5 text-slate-500 hover:text-red-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-red-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
                             title="Hapus Kartu"
                           >
                             <Trash2 size={16} />
@@ -813,13 +817,13 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
               <div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">Direct JSON Editor</h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Format: recallio.deck-bundle (v1). Kartu dengan \"id\" yang sama diperbarui di tempat (progres belajar tetap); kartu tanpa id ditambahkan. Menghapus kartu dari JSON tidak menghapusnya dari database.
                 </p>
               </div>
               <button
                 onClick={() => setIsJsonEditorOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-sm"
+                className="text-slate-600 dark:text-slate-400 hover:text-slate-600 dark:hover:text-white text-sm"
               >
                 Tutup
               </button>
@@ -842,7 +846,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
             </div>
 
             <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-slate-600 dark:text-slate-400">
                 Data diverifikasi dan disimpan dalam satu transaksi.
               </span>
               <div className="flex gap-2">
@@ -866,12 +870,14 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
         </div>
       )}
       {showAnkiImport && (
-        <AnkiImportDialog
-          onClose={() => setShowAnkiImport(false)}
-          onDone={() => {
-            void refreshDecks().then(() => selectedDeck && refreshCards(selectedDeck.id));
-          }}
-        />
+        <Suspense fallback={null}>
+          <AnkiImportDialog
+            onClose={() => setShowAnkiImport(false)}
+            onDone={() => {
+              void refreshDecks().then(() => selectedDeck && refreshCards(selectedDeck.id));
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

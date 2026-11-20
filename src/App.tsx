@@ -1,7 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { Study } from './pages/Study';
-import { DeckManager } from './pages/DeckManager';
-import { Settings } from './pages/Settings';
 import { initializeDefaultDeck, getAllDecks, getDB, getSettings, migrateLegacyProgress } from './services/database';
 import { installSfxListener } from './services/sfx';
 import { backupReminder, ensureFirstSeen, snoozeBackupReminder } from './services/backupReminder';
@@ -12,9 +10,26 @@ import { useTranslation } from './context/useTranslation';
 import type { Deck } from './types/flashcard';
 import { BookMarked, FolderKanban, BarChart3, Sliders, Clock, ShieldAlert } from 'lucide-react';
 
+// Halaman selain Study dimuat on-demand agar bundle awal kecil
+// (DeckManager membawa fflate/fzstd/importer Anki; Settings membawa backup).
 const Statistics = lazy(() =>
   import('./pages/Statistics').then((module) => ({ default: module.Statistics }))
 );
+const DeckManager = lazy(() =>
+  import('./pages/DeckManager').then((module) => ({ default: module.DeckManager }))
+);
+const Settings = lazy(() =>
+  import('./pages/Settings').then((module) => ({ default: module.Settings }))
+);
+
+function PageFallback() {
+  return (
+    <div className="w-full max-w-4xl mx-auto py-16 flex flex-col items-center justify-center text-slate-600 dark:text-slate-400">
+      <Clock className="w-8 h-8 animate-spin text-indigo-600 dark:text-indigo-400 mb-3" />
+      <span className="text-sm">Memuat...</span>
+    </div>
+  );
+}
 
 function MainContent() {
   const { t } = useTranslation();
@@ -185,35 +200,28 @@ function MainContent() {
           />
         )}
 
-        {currentPage === 'decks' && (
-          <DeckManager
-            currentDeck={currentDeck}
-            onSelectDeck={(deck) => setCurrentDeck(deck)}
-          />
-        )}
+        <Suspense fallback={<PageFallback />}>
+          {currentPage === 'decks' && (
+            <DeckManager
+              currentDeck={currentDeck}
+              onSelectDeck={(deck) => setCurrentDeck(deck)}
+            />
+          )}
 
-        {currentPage === 'stats' && (
-          <Suspense
-            fallback={
-              <div className="w-full max-w-4xl mx-auto py-16 flex flex-col items-center justify-center text-slate-500">
-                <Clock className="w-8 h-8 animate-spin text-indigo-500 mb-3" />
-                <span className="text-sm">Memuat...</span>
-              </div>
-            }
-          >
+          {currentPage === 'stats' && (
             <Statistics
               currentDeck={currentDeck}
               onNavigateToStudy={() => setCurrentPage('study')}
             />
-          </Suspense>
-        )}
+          )}
 
-        {currentPage === 'settings' && (
-          <Settings
-            isDarkMode={isDarkMode}
-            onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-          />
-        )}
+          {currentPage === 'settings' && (
+            <Settings
+              isDarkMode={isDarkMode}
+              onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+            />
+          )}
+        </Suspense>
       </main>
     </div>
   );

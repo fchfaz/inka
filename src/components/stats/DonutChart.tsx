@@ -77,7 +77,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
             {centerLabel || total}
           </span>
           {centerSublabel && (
-            <span className="text-[10px] text-slate-400 font-medium">
+            <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium">
               {centerSublabel}
             </span>
           )}
@@ -101,7 +101,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
               <span className="font-semibold text-slate-900 dark:text-white">
                 {seg.count}
               </span>
-              <span className="text-[11px] text-slate-400 min-w-[32px] text-right">
+              <span className="text-[11px] text-slate-600 dark:text-slate-400 min-w-[32px] text-right">
                 {seg.percentage}%
               </span>
             </div>
