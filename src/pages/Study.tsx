@@ -88,7 +88,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
     toastTimerRef.current = window.setTimeout(() => setToast(null), 3500);
   }, []);
 
-  /** Hitung ulang antrean dari kartu di memori dan tampilkan kartu berikutnya. */
+  
   const refreshQueue = useCallback(() => {
     const now = Date.now();
     const s = settingsRef.current;
@@ -116,7 +116,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
     getAllCards().then(setAllCards);
   }, []);
 
-  // Muat deck, pengaturan, dan progres hari ini
+  
   useEffect(() => {
     let isMounted = true;
 
@@ -155,7 +155,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
     };
   }, [currentDeck, refreshQueue]);
 
-  // Saat antrean kosong tetapi ada kartu learning yang akan jatuh tempo, bangunkan antrean tepat waktu.
+  
   useEffect(() => {
     if (current || nextLearningAt === null) return;
     const delay = Math.min(Math.max(nextLearningAt - LEARN_AHEAD_MS - Date.now(), 1000), 2 ** 31 - 1);
@@ -163,7 +163,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
     return () => window.clearTimeout(t);
   }, [current, nextLearningAt, refreshQueue]);
 
-  // Saat jendela kembali aktif: tangani pergantian hari dan jatuh tempo baru
+  
   useEffect(() => {
     const onFocus = async () => {
       if (!currentDeck) return;
@@ -183,8 +183,8 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
     return () => window.removeEventListener('focus', onFocus);
   }, [currentDeck, current, refreshQueue]);
 
-  // Bacakan kata Jepang (bacaan hiragana, atau kata depan bila kosong) hanya saat kartu dibalik;
-  // berhenti saat kembali ke depan / ganti kartu. Contoh kalimat dan arti tidak disuarakan.
+  
+  
   const currentId = current?.card.id;
   const spokenText = current ? speakableText(current.card) : '';
   useEffect(() => {
@@ -270,7 +270,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
       }
       replaceCard(entry.prev);
       refreshQueue();
-      // Pastikan kartu yang dibatalkan yang tampil lagi
+      
       const restored = cardsRef.current.find((c) => c.id === entry.prev.id);
       if (restored && !restored.suspended) {
         setCurrent({ card: restored, kind: (restored.srs?.state ?? 0) === 0 ? 'new' : (restored.srs?.state ?? 0) === 2 ? 'review' : 'learning' });
@@ -315,7 +315,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
     refreshQueue();
   };
 
-  // Shortcut keyboard. Handler selalu memakai closure terbaru lewat ref.
+  
   const keyHandlerRef = useRef<(e: KeyboardEvent) => void>(() => {});
   const handleKey = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement | null;
@@ -438,7 +438,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
         </div>
       )}
 
-      {/* Header Deck & Balik ke Daftar Deck */}
+      
       <div className="w-full max-w-xl mx-auto mb-3 flex items-center justify-between relative" ref={dropdownRef}>
         <div className="flex items-center gap-2">
           <button
@@ -475,7 +475,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
             onSpeak={handleSpeak}
           />
 
-          {/* Aksi kartu */}
+          
           <div className="w-full max-w-xl flex items-center justify-center gap-1 mb-3 text-slate-500 dark:text-slate-400">
             <button
               data-sfx="none"

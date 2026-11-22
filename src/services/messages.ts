@@ -1,13 +1,8 @@
-/**
- * Katalog pesan dua bahasa untuk fitur impor Anki, media, backup, dan pengaturan.
- * - Komponen: `const m = useMsg()` (ikut berubah saat bahasa diganti).
- * - Service: `msg('kunci', { param })` membaca bahasa tersimpan (localStorage 'inka_language').
- * Placeholder berbentuk {nama}. Bahasa bawaan: Indonesia.
- */
+
 export type Lang = 'id' | 'en';
 
 const ID = {
-  // ---- Galat paket Anki
+  
   'anki.notZip': 'Berkas ini bukan paket Anki (.apkg / .colpkg). Ekspor dari Anki lewat Berkas → Ekspor.',
   'anki.noCollection': 'Tidak ada koleksi di dalam paket. Pastikan berkas adalah hasil ekspor Anki yang utuh.',
   'anki.badZip': 'Arsip zip rusak atau tidak lengkap ({err}).',
@@ -25,7 +20,7 @@ const ID = {
   'import.memory': 'Memori browser tidak cukup untuk paket sebesar ini. Coba impor tanpa media atau pecah deck-nya.',
   'import.failed': 'Impor gagal: {err}. Tidak ada perubahan yang disimpan.',
 
-  // ---- Media
+  
   'media.quota': 'Penyimpanan browser penuh. Hapus media yang tidak terpakai di Pengaturan, bebaskan ruang di perangkat, atau impor tanpa media.',
   'media.saveFail': 'Gagal menyimpan media: {err}',
   'media.unsupported': 'Jenis berkas tidak didukung. Gunakan gambar, audio (mp3, ogg, wav, m4a), atau video (mp4, webm).',
@@ -33,7 +28,7 @@ const ID = {
   'media.missing': 'media hilang',
   'media.missingTitle': 'Media tidak ditemukan',
 
-  // ---- Backup / validasi (service)
+  
   'backup.zipBroken': 'Arsip backup rusak atau tidak lengkap.',
   'backup.noJson': 'Arsip ini bukan backup Inka (backup.json tidak ada).',
   'backup.notJson': 'Berkas bukan JSON/ZIP backup yang valid.',
@@ -50,7 +45,7 @@ const ID = {
   'csv.noDeck': 'Deck tujuan tidak ditemukan.',
   'csv.noRows': 'Tidak ada baris kartu yang terbaca dari file.',
 
-  // ---- Dialog impor Anki
+  
   'dlg.title': 'Impor paket Anki',
   'dlg.close': 'Tutup',
   'dlg.pickTitle': 'Pilih berkas .apkg atau .colpkg',
@@ -88,7 +83,7 @@ const ID = {
   'dlg.more': ' +{n} lagi',
   'dlg.otherFile': 'Pilih berkas lain',
 
-  // ---- Pengaturan
+  
   'set.stepsInvalid': 'Langkah belajar harus berformat angka + m/h/d, mis. "1m 10m" atau "1h 1d".',
   'set.saved': 'Pengaturan disimpan.',
   'set.fsrsTitle': 'Penjadwalan Belajar (FSRS)',
@@ -135,7 +130,7 @@ const ID = {
   'set.pwaTitle': 'PWA & Offline Storage',
   'set.pwaDesc': 'Aplikasi ini beroperasi secara offline-first menggunakan browser IndexedDB, tanpa server eksternal.',
 
-  // ---- Pengingat backup
+  
   'remind.text': 'Sudah {days} hari sejak backup terakhir (atau belum pernah). Data hanya ada di browser ini.',
   'remind.never': 'Anda belum pernah membuat backup. Data hanya ada di browser ini.',
   'remind.go': 'Buka Backup',
@@ -150,7 +145,7 @@ const ID = {
   'field.hint': 'Petunjuk',
   'field.extra': 'Catatan / media tambahan',
 
-  // ---- Editor kartu
+  
   'card.frontRequired': 'Kolom Depan wajib diisi.',
   'card.extraLabel': 'Catatan / media tambahan (opsional, tampil di sisi belakang)',
   'card.attach': 'Lampirkan gambar / audio / video',
@@ -310,7 +305,7 @@ export function currentLang(): Lang {
     const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('inka_language') : null;
     if (saved === 'en' || saved === 'id') return saved;
   } catch {
-    /* localStorage tidak tersedia */
+    
   }
   return 'id';
 }
@@ -326,7 +321,7 @@ export function msgIn(lang: Lang, key: MsgKey, params?: MsgParams): string {
   return format(DICT[lang][key] ?? DICT.id[key] ?? key, params);
 }
 
-/** Untuk service/non-React: memakai bahasa tersimpan saat dipanggil. */
+
 export function msg(key: MsgKey, params?: MsgParams): string {
   return msgIn(currentLang(), key, params);
 }

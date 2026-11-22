@@ -20,10 +20,7 @@ function stripHtml(value: string): string {
     .trim();
 }
 
-/**
- * Petakan baris teks Anki (urutan kolom: Expression, Reading, Meaning, Example JP,
- * Example reading, Example translation, Hint) ke format kartu Inka.
- */
+
 export function convertAnkiNoteToRecallioCard(note: AnkiParsedNote): RecallioBundleCard {
   const f = note.fields.map(stripHtml);
 

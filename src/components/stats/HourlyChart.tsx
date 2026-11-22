@@ -13,7 +13,7 @@ export const HourlyChart: React.FC<HourlyChartProps> = ({ data, ariaLabel }) => 
 
   return (
     <div className="space-y-3" role="img" aria-label={ariaLabel}>
-      {/* Tooltip display */}
+      
       <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
         <span>Jam 00:00 - 23:00 (Waktu Lokal)</span>
         {hoveredHour ? (

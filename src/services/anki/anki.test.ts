@@ -114,7 +114,7 @@ describe('impor ke database', () => {
     expect((await getAllReviewLogs()).length).toBe(s.logsAdded);
     expect(s.mediaStored).toBeGreaterThan(0);
     expect((await getMediaStats()).count).toBe(s.mediaStored);
-    expect(s.mediaMissing).toContain('hilang.png'); // sengaja dirujuk fixture tapi tidak ada di paket
+    expect(s.mediaMissing).toContain('hilang.png'); 
     expect(s.mediaSkipped).toEqual([]);
   });
 
@@ -166,7 +166,7 @@ describe('impor ke database', () => {
     ).rejects.toThrow();
     expect((await getAllCards()).length).toBe(0);
     expect((await getAllDecks()).filter((d) => d.name.startsWith('Japanese')).length).toBe(0);
-    expect((await getMediaStats()).count).toBe(0); // media yatim dibersihkan
+    expect((await getMediaStats()).count).toBe(0); 
   });
 
   it('dibatalkan sebelum menulis kartu', async () => {
@@ -190,7 +190,7 @@ describe('impor ke database', () => {
 });
 
 describe('penjadwalan Anki -> FSRS', () => {
-  const crt = 1_700_000_000; // detik
+  const crt = 1_700_000_000; 
   const base: AnkiCard = {
     id: '1', nid: '1', did: '1', odid: '0', ord: 0, type: 2, queue: 2, due: 10, ivl: 30, factor: 2500,
     reps: 5, lapses: 1, left: 0, odue: 0, data: '', };

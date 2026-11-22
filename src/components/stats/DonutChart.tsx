@@ -26,7 +26,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  // Offset kumulatif dihitung murni (tanpa reassign variabel) sebelum render
+  
   const calculatedSegments = segments.map((seg, i) => {
     const fraction = total > 0 ? seg.count / total : 0;
     const before = segments.slice(0, i).reduce((sum, s) => sum + (total > 0 ? s.count / total : 0), 0);
@@ -39,7 +39,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
 
   return (
     <div className="flex flex-col sm:flex-row items-center gap-6" role="img" aria-label={ariaLabel}>
-      {/* SVG Ring */}
+      
       <div className="relative w-40 h-40 shrink-0">
         <svg width={size} height={size} className="transform -rotate-90">
           <circle
@@ -71,7 +71,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
             })}
         </svg>
 
-        {/* Center Text */}
+        
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
           <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">
             {centerLabel || total}
@@ -84,7 +84,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
         </div>
       </div>
 
-      {/* Legend & Details */}
+      
       <div className="flex-1 w-full space-y-2">
         {segments.map((seg, idx) => (
           <div key={idx} className="flex items-center justify-between text-xs">

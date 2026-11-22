@@ -1,13 +1,13 @@
 export type Language = 'id' | 'en';
 
 export interface Translations {
-  // Navigation
+  
   navStudy: string;
   navDecks: string;
   navStats: string;
   navSettings: string;
 
-  // Study View
+  
   deckDropdownTitle: string;
   createManageOtherDecks: string;
   totalCardsCount: (count: number) => string;
@@ -31,13 +31,18 @@ export interface Translations {
   noDueCardsTomorrow: string;
   addNewCardsBtn: (count: number) => string;
 
-  // Flashcard
+  
   badgeFront: string;
   badgeBack: string;
   meaningLabel: string;
   exampleUsageLabel: string;
 
-  // Deck Manager
+  btnAgain: string;
+  btnHard: string;
+  btnGood: string;
+  btnEasy: string;
+
+  
   deckManagerTitle: string;
   deckManagerSubtitle: string;
   newDeckBtn: string;
@@ -68,7 +73,7 @@ export interface Translations {
   directJsonEditorDesc: string;
   jsonVerificationNotice: string;
 
-  // Settings
+  
   settingsTitle: string;
   settingsSubtitle: string;
   themeTitle: string;
@@ -107,7 +112,7 @@ export interface Translations {
   saveSettingsBtn: string;
   settingsSavedNotice: string;
 
-  // Statistics
+  
   statsTitle: string;
   statsSubtitle: string;
   allDecksOption: string;
@@ -173,19 +178,23 @@ export const translations: Record<Language, Translations> = {
     showAnswer: 'Tampilkan Jawaban',
     cardsStudiedToday: 'Kartu dipelajari hari ini:',
     countCardsSuffix: (count) => `${count} kartu`,
-    actionUndo: 'Undo',
-    actionSuspend: 'Suspend',
-    actionBury: 'Bury',
+    actionUndo: 'Batal (Undo)',
+    actionSuspend: 'Tangguhkan (Suspend)',
+    actionBury: 'Sembunyikan (Bury)',
     actionVoice: 'Suara',
     sessionFinishedTitle: 'Selesai untuk sekarang',
     nextLearningClock: (clock) => `Kartu berikutnya muncul sekitar pukul ${clock}.`,
     noDueCardsTomorrow: 'Tidak ada kartu yang jatuh tempo. Kembali lagi besok.',
     addNewCardsBtn: (count) => `Tambah ${count} kartu baru`,
 
-    badgeFront: 'Front',
-    badgeBack: 'Back',
+    badgeFront: 'Depan',
+    badgeBack: 'Belakang',
     meaningLabel: 'ARTI',
     exampleUsageLabel: 'CONTOH PENGGUNAAN',
+    btnAgain: 'Ulang',
+    btnHard: 'Sulit',
+    btnGood: 'Bagus',
+    btnEasy: 'Mudah',
 
     deckManagerTitle: 'Pengelolaan Flashcard',
     deckManagerSubtitle: 'Kelola kumpulan deck, tambah/edit kosakata manual, impor Anki (.apkg), atau edit langsung via JSON.',
@@ -332,6 +341,10 @@ export const translations: Record<Language, Translations> = {
     badgeBack: 'Back',
     meaningLabel: 'MEANING',
     exampleUsageLabel: 'EXAMPLE USAGE',
+    btnAgain: 'Again',
+    btnHard: 'Hard',
+    btnGood: 'Good',
+    btnEasy: 'Easy',
 
     deckManagerTitle: 'Flashcard Management',
     deckManagerSubtitle: 'Organize decks, create/edit cards manually, import Anki (.apkg), or edit directly via JSON.',

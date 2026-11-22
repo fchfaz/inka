@@ -58,7 +58,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
         return saved as TimeRangeKey;
       }
     } catch {
-      // ignore
+      
     }
     return '1m';
   });
@@ -72,7 +72,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
 
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  // Close dropdown on outside click
+  
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -83,13 +83,13 @@ export const Statistics: React.FC<StatisticsProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Save selected time range to localStorage
+  
   const handleRangeChange = (r: TimeRangeKey) => {
     setTimeRange(r);
     try {
       localStorage.setItem('inka_stats_range', r);
     } catch {
-      // ignore
+      
     }
   };
 
@@ -98,7 +98,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
     setTimeout(() => setToastMsg(null), 3000);
   };
 
-  // Ambil semua data yang dibutuhkan dari IndexedDB (murni: tidak menyentuh state)
+  
   const fetchStatsData = useCallback(async () => {
     const targetDeck = selectedDeckId === 'all' ? undefined : selectedDeckId;
     const [allDecks, fetchedLogs, fetchedCards] = await Promise.all([
@@ -140,14 +140,14 @@ export const Statistics: React.FC<StatisticsProps> = ({
     };
   }, [fetchStatsData]);
 
-  // Pindah deck: tampilkan loading sampai data deck baru siap
+  
   const changeDeck = (id: string) => {
     if (id === selectedDeckId) return;
     setIsLoading(true);
     setSelectedDeckId(id);
   };
 
-  // Pure aggregation computed via useMemo
+  
   const stats = useMemo(() => {
     const filter: StatsFilter = {
       deckId: selectedDeckId === 'all' ? undefined : selectedDeckId,
@@ -156,7 +156,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
     return calculateStats(logs, cards, filter);
   }, [logs, cards, selectedDeckId, timeRange]);
 
-  // Dev dummy data seeder
+  
   const handleSeedData = async () => {
     if (cards.length === 0) {
       alert('Tidak ada kartu untuk di-seed review logs.');
@@ -190,12 +190,12 @@ export const Statistics: React.FC<StatisticsProps> = ({
     );
   }
 
-  // Empty state check
+  
   const hasEverReviewed = logs.length > 0;
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-4 space-y-6">
-      {/* Toast Notification */}
+      
       {toastMsg && (
         <div className="fixed top-20 right-6 z-50 flex items-center gap-2 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-2.5 rounded-xl shadow-xl text-xs sm:text-sm font-semibold border border-slate-700">
           <CheckCircle2 size={16} className="text-emerald-600" />
@@ -203,7 +203,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
         </div>
       )}
 
-      {/* Top Header & Filters */}
+      
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -215,9 +215,9 @@ export const Statistics: React.FC<StatisticsProps> = ({
           </p>
         </div>
 
-        {/* Controls: Deck Selector Dropdown & Time Range Segmented */}
+        
         <div className="flex flex-wrap items-center gap-2">
-          {/* Deck Selector Dropdown */}
+          
           <div className="relative inline-block text-left" ref={dropdownRef}>
             <button
               type="button"
@@ -266,7 +266,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
             )}
           </div>
 
-          {/* Time Range Segmented Control */}
+          
           <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800/80 p-0.5 text-xs">
             {(['7d', '1m', '3m', '1y', 'all'] as TimeRangeKey[]).map(r => {
               const labels: Record<TimeRangeKey, string> = {
@@ -294,7 +294,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
         </div>
       </div>
 
-      {/* Empty State Banner if no review logs exist yet */}
+      
       {!hasEverReviewed && (
         <div className="bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900 rounded-2xl p-6 text-center space-y-3">
           <Sparkles className="w-8 h-8 text-indigo-500 mx-auto" />
@@ -321,9 +321,9 @@ export const Statistics: React.FC<StatisticsProps> = ({
         </div>
       )}
 
-      {/* 1. Ringkasan Atas (KPI 4 Ubin) */}
+      
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* Hari Ini */}
+        
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
           <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 mb-1">
             <span className="text-[11px] font-bold uppercase tracking-wider">Hari Ini</span>
@@ -335,7 +335,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
           <span className="text-[11px] text-slate-600 dark:text-slate-400">kartu dipelajari</span>
         </div>
 
-        {/* Waktu Belajar Hari Ini */}
+        
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
           <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 mb-1">
             <span className="text-[11px] font-bold uppercase tracking-wider">Waktu Hari Ini</span>
@@ -349,7 +349,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
           </span>
         </div>
 
-        {/* Tingkat Benar (Pass Rate) Hari Ini */}
+        
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
           <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 mb-1">
             <span className="text-[11px] font-bold uppercase tracking-wider">Pass Rate Hari Ini</span>
@@ -361,7 +361,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
           <span className="text-[11px] text-slate-600 dark:text-slate-400">Hard, Good, Easy</span>
         </div>
 
-        {/* Streak Berturut-turut */}
+        
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
           <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 mb-1">
             <span className="text-[11px] font-bold uppercase tracking-wider">Streak</span>
@@ -374,7 +374,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
         </div>
       </div>
 
-      {/* Kalimat Ringkas Hari Ini */}
+      
       {stats.todayCardsStudied > 0 && (
         <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 bg-slate-100/80 dark:bg-slate-800/60 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <span>
@@ -384,7 +384,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
         </div>
       )}
 
-      {/* 2. Kalender Aktivitas (Heatmap 12 Bulan) */}
+      
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div>
@@ -408,7 +408,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
         />
       </div>
 
-      {/* 3. Jumlah Review (Stacked Bar Chart: Kartu vs Waktu) */}
+      
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3">
         <div>
           <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
@@ -438,9 +438,9 @@ export const Statistics: React.FC<StatisticsProps> = ({
         />
       </div>
 
-      {/* Grid 2 Kolom: 4. Tombol Jawaban & 5. Status Kartu */}
+      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* 4. Tombol Jawaban (Answer Buttons Distribution & Pass Rate) */}
+        
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -486,7 +486,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
           </div>
         </div>
 
-        {/* 5. Jumlah Kartu (Status Penguasaan Donut Chart) */}
+        
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -541,9 +541,9 @@ export const Statistics: React.FC<StatisticsProps> = ({
         </div>
       </div>
 
-      {/* Grid 2 Kolom: 6. Antrean Mendatang & 7. Pola Jam Belajar */}
+      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* 6. Antrean Mendatang (Future Due Queue) */}
+        
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <div>
@@ -594,7 +594,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
           </div>
         </div>
 
-        {/* 7. Pola Jam Belajar (Hourly Breakdown) */}
+        
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3">
           <div>
             <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
@@ -610,9 +610,9 @@ export const Statistics: React.FC<StatisticsProps> = ({
         </div>
       </div>
 
-      {/* Grid 2 Kolom: 8. Kartu Bermasalah (Leeches) & 9/10. Waktu & Kartu Ditambahkan */}
+      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* 8. Kartu Bermasalah (Leeches / Sering Again) */}
+        
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3">
           <div>
             <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
@@ -660,9 +660,9 @@ export const Statistics: React.FC<StatisticsProps> = ({
           )}
         </div>
 
-        {/* 9 & 10. Waktu per Kartu & Kartu Ditambahkan */}
+        
         <div className="space-y-4">
-          {/* 10. Waktu per Kartu */}
+          
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
@@ -709,7 +709,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
             </div>
           </div>
 
-          {/* 9. Riwayat Kartu Ditambahkan */}
+          
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-2">
             <div className="flex items-center justify-between">
               <div>
@@ -742,7 +742,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
         </div>
       </div>
 
-      {/* Footer Info Box */}
+      
       <div className="p-4 rounded-2xl bg-slate-100/60 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 space-y-1.5">
         <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
           <Info size={15} className="text-indigo-500" />
@@ -752,7 +752,7 @@ export const Statistics: React.FC<StatisticsProps> = ({
           Inka memakai algoritma FSRS: tiap kartu punya tanggal jatuh tempo sendiri yang dihitung dari stability dan difficulty kartu itu. Jadwal mendatang di atas dibaca langsung dari tanggal tersebut. Statistik status kartu dan retensi makin akurat seiring bertambahnya riwayat belajar.
         </p>
 
-        {/* Development test tools */}
+        
         <div className="flex items-center gap-3 pt-2 text-[11px]">
           <button
             onClick={handleSeedData}

@@ -9,7 +9,7 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
-// Sembunyikan splash screen (didefinisikan di index.html) setelah tampil minimal sebentar agar tidak berkedip
+
 const splash = document.getElementById('splash')
 if (splash) {
   const MIN_VISIBLE_MS = 1700

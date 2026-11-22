@@ -62,7 +62,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
       setQuota(await storageEstimate());
       setPersistent(await isStoragePersistent());
     } catch {
-      /* IndexedDB tidak tersedia: panel disembunyikan */
+      
     }
   };
   useEffect(() => {
@@ -78,7 +78,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
           setPersistent(persisted);
         }
       } catch {
-        /* IndexedDB tidak tersedia: panel disembunyikan */
+        
       }
     })();
     return () => {
@@ -157,7 +157,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
         </div>
       )}
 
-      {/* Bahasa Aplikasi */}
+      
       <div className={`${card} flex items-center justify-between`}>
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
@@ -195,7 +195,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
         </div>
       </div>
 
-      {/* Tema */}
+      
       <div className={`${card} flex items-center justify-between`}>
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
@@ -224,7 +224,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
         </button>
       </div>
 
-      {/* Penjadwalan */}
+      
       <div className={`${card} space-y-4`}>
         <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-semibold">
           <Info size={20} className="text-indigo-500" />
@@ -291,7 +291,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
         </button>
       </div>
 
-      {/* Efek suara */}
+      
       <div className={`${card} space-y-4`}>
         <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-semibold">
           <Volume2 size={20} className="text-indigo-500" />
@@ -336,7 +336,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
         <p className="text-xs text-slate-500 dark:text-slate-400">{m('set.sfxSaveHint')}</p>
       </div>
 
-      {/* Backup */}
+      
       <div className={`${card} space-y-3`}>
         <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-semibold">
           <HardDriveDownload size={20} className="text-emerald-600" />
@@ -362,7 +362,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
         </p>
       </div>
 
-      {/* Media */}
+      
       {mediaStats && (
         <div className={`${card} space-y-3`}>
           <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-semibold">
@@ -382,7 +382,7 @@ export const Settings: React.FC<SettingsProps> = ({ isDarkMode, onToggleDarkMode
         </div>
       )}
 
-      {/* PWA */}
+      
       <div className={`${card} space-y-3`}>
         <div className="flex items-center gap-2.5 text-slate-900 dark:text-white font-semibold">
           <Smartphone size={20} className="text-emerald-600" />

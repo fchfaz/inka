@@ -10,8 +10,8 @@ import { useTranslation } from './context/useTranslation';
 import type { Deck } from './types/flashcard';
 import { BookMarked, FolderKanban, BarChart3, Sliders, Clock, ShieldAlert } from 'lucide-react';
 
-// Halaman selain Study dimuat on-demand agar bundle awal kecil
-// (DeckManager membawa fflate/fzstd/importer Anki; Settings membawa backup).
+
+
 const Statistics = lazy(() =>
   import('./pages/Statistics').then((module) => ({ default: module.Statistics }))
 );
@@ -41,10 +41,10 @@ function MainContent() {
     return localStorage.getItem('inka_theme') === 'dark';
   });
 
-  // Efek suara untuk semua tombol (satu listener global)
+  
   useEffect(() => installSfxListener(), []);
 
-  // Apply dark mode class to root HTML
+  
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -55,7 +55,7 @@ function MainContent() {
     }
   }, [isDarkMode]);
 
-  // Init default deck on initial boot
+  
   useEffect(() => {
     async function init() {
       try {
@@ -71,7 +71,7 @@ function MainContent() {
         setCurrentDeck(decks[0]);
       }
 
-      // Data hanya ada di browser: minta penyimpanan permanen (diam-diam) dan ingatkan backup berkala.
+      
       try {
         ensureFirstSeen();
         if (!(await isStoragePersistent())) void requestPersistentStorage();
@@ -80,7 +80,7 @@ function MainContent() {
         const r = backupReminder(hasData);
         if (r.remind) setReminder({ never: r.never, days: r.days });
       } catch {
-        /* pengingat bersifat opsional */
+        
       }
     }
     init();
@@ -88,7 +88,7 @@ function MainContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
-      {/* Top Header */}
+      
       <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div
@@ -103,7 +103,7 @@ function MainContent() {
             </span>
           </div>
 
-          {/* Navigation Tabs */}
+          
           <nav className="flex items-center gap-1">
             <button
               onClick={() => setCurrentPage('study')}
@@ -191,7 +191,7 @@ function MainContent() {
         </div>
       )}
 
-      {/* Main Content Area */}
+      
       <main className="flex-1 flex flex-col justify-center items-center py-6 px-2 sm:px-4">
         {currentPage === 'study' && (
           <Study

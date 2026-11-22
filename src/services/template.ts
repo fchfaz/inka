@@ -1,7 +1,7 @@
 import type { NoteType, CardTemplate } from '../types/models';
 import { renderCloze } from './anki/convert';
 
-/** Note Type standar bawaan Anki + Japanese Vocab */
+
 export const BUILTIN_NOTE_TYPES: NoteType[] = [
   {
     id: 'builtin-basic',
@@ -90,28 +90,21 @@ export interface RenderResult {
   answer: string;
 }
 
-/**
- * Render template Anki sederhana:
- * - {{Field}}
- * - {{#Field}}...{{/Field}} (kondisional bila ada isi)
- * - {{^Field}}...{{/Field}} (kondisional bila kosong)
- * - {{FrontSide}} (pada sisi belakang)
- * - {{cloze:Field}} atau {{c1::...}}
- */
+
 export function renderTemplate(
   template: CardTemplate,
   fields: Record<string, string>,
   cardOrd: number = 0,
   isCloze: boolean = false
 ): RenderResult {
-  // 1. Render conditional blocks terlebih dahulu
+  
   const renderConditionals = (tmpl: string): string => {
-    // {{#Field}}...{{/Field}}
+    
     let res = tmpl.replace(/\{\{#([^}]+)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (_m, key: string, content: string) => {
       const val = (fields[key.trim()] || fields[key.trim().toLowerCase()] || '').trim();
       return val ? content : '';
     });
-    // {{^Field}}...{{/Field}}
+    
     res = res.replace(/\{\{\^([^}]+)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (_m, key: string, content: string) => {
       const val = (fields[key.trim()] || fields[key.trim().toLowerCase()] || '').trim();
       return !val ? content : '';
@@ -121,17 +114,17 @@ export function renderTemplate(
 
   const replaceFields = (tmpl: string, currentOrd: number): string => {
     let out = renderConditionals(tmpl);
-    // {{cloze:FieldName}}
+    
     out = out.replace(/\{\{cloze:([^}]+)\}\}/g, (_m, fieldName: string) => {
       const raw = fields[fieldName.trim()] || fields[fieldName.trim().toLowerCase()] || '';
       return renderCloze(raw, currentOrd + 1).question;
     });
 
-    // {{FieldName}}
+    
     out = out.replace(/\{\{([^}#^/]+)\}\}/g, (m, key: string) => {
       const trimmed = key.trim();
-      if (trimmed === 'FrontSide') return m; // Tangani FrontSide terpisah
-      // Periksa field nama biasa
+      if (trimmed === 'FrontSide') return m; 
+      
       const val = fields[trimmed] ?? fields[trimmed.toLowerCase()] ?? '';
       return val;
     });
@@ -140,31 +133,31 @@ export function renderTemplate(
 
   let q = replaceFields(template.qfmt, cardOrd);
 
-  // Jika isCloze dan tidak memakai tag {{cloze:...}}, cek apakah ada clozes langsung
+  
   if (isCloze && !template.qfmt.includes('cloze:')) {
-    // Render cloze pada seluruh teks q jika ada syntax c1::...
+    
     q = renderCloze(q, cardOrd + 1).question;
   }
 
-  // Render Sisi Belakang
+  
   let a = template.afmt;
-  // Gantikan FrontSide dengan hasil evaluasi qfmt jika qfmt tidak diubah cloze
+  
   a = a.replace(/\{\{FrontSide\}\}/g, q);
 
   if (isCloze) {
-    // Pada cloze answer, {{cloze:FieldName}} harus di-resolve menggunakan answer cloze
+    
     a = renderConditionals(a);
     a = a.replace(/\{\{cloze:([^}]+)\}\}/g, (_m, fieldName: string) => {
       const raw = fields[fieldName.trim()] || fields[fieldName.trim().toLowerCase()] || '';
       return renderCloze(raw, cardOrd + 1).answer;
     });
-    // Replace sisa field biasa
+    
     a = a.replace(/\{\{([^}#^/]+)\}\}/g, (_m, key: string) => {
       const trimmed = key.trim();
       if (trimmed === 'FrontSide') return '';
       return fields[trimmed] ?? fields[trimmed.toLowerCase()] ?? '';
     });
-    // Render tag cN::... yang mungkin masih ada
+    
     a = renderCloze(a, cardOrd + 1).answer;
   } else {
     a = replaceFields(a, cardOrd);
@@ -173,10 +166,10 @@ export function renderTemplate(
   return { question: q.trim(), answer: a.trim() };
 }
 
-/** Hitung berapa kartu yang dihasilkan oleh sebuah Note berdasarkan NoteType */
+
 export function getGeneratedCardOrds(noteType: NoteType, fields: Record<string, string>): number[] {
   if (noteType.isCloze) {
-    // Cari angka cloze tertinggi {{c(\d+)::...}}
+    
     let maxCloze = 0;
     const re = /\{\{c(\d+)::/g;
     for (const val of Object.values(fields)) {
@@ -197,7 +190,7 @@ export function getGeneratedCardOrds(noteType: NoteType, fields: Record<string, 
   for (let i = 0; i < noteType.templates.length; i++) {
     const tmpl = noteType.templates[i];
     const rendered = renderTemplate(tmpl, fields, i, false);
-    // Kartu dibuat jika pertanyaan tidak kosong
+    
     if (rendered.question.trim().length > 0) {
       ords.push(i);
     }

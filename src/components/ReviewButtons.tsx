@@ -1,28 +1,30 @@
 import React from 'react';
 import type { ReviewRating } from '../types/flashcard';
 import { playSfx, type SfxName } from '../services/sfx';
+import { useTranslation } from '../context/useTranslation';
 
 const RATING_SFX: Record<ReviewRating, SfxName> = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
 
 interface ReviewButtonsProps {
   onAnswer: (rating: ReviewRating) => void;
-  /** Interval berikutnya per tombol, mis. { 1: '1m', 2: '6m', 3: '10m', 4: '4h' }. */
   intervals: Record<ReviewRating, string> | null;
   disabled?: boolean;
 }
 
-const BUTTONS: Array<{ rating: ReviewRating; label: string; className: string }> = [
-  { rating: 1, label: 'Again', className: 'bg-[#ef4444] hover:bg-red-600 active:bg-red-700' },
-  { rating: 2, label: 'Hard', className: 'bg-[#6b7280] hover:bg-gray-600 active:bg-gray-700' },
-  { rating: 3, label: 'Good', className: 'bg-[#10b981] hover:bg-emerald-600 active:bg-emerald-700' },
-  { rating: 4, label: 'Easy', className: 'bg-[#2563eb] hover:bg-blue-600 active:bg-blue-700' },
-];
-
 export const ReviewButtons: React.FC<ReviewButtonsProps> = ({ onAnswer, intervals, disabled }) => {
+  const { t } = useTranslation();
+
+  const buttons: Array<{ rating: ReviewRating; label: string; className: string }> = [
+    { rating: 1, label: t.btnAgain, className: 'bg-[#ef4444] hover:bg-red-600 active:bg-red-700' },
+    { rating: 2, label: t.btnHard, className: 'bg-[#6b7280] hover:bg-gray-600 active:bg-gray-700' },
+    { rating: 3, label: t.btnGood, className: 'bg-[#10b981] hover:bg-emerald-600 active:bg-emerald-700' },
+    { rating: 4, label: t.btnEasy, className: 'bg-[#2563eb] hover:bg-blue-600 active:bg-blue-700' },
+  ];
+
   return (
     <div className="w-full max-w-xl mx-auto px-2">
       <div className="grid grid-cols-4 gap-2.5 sm:gap-4">
-        {BUTTONS.map((b) => (
+        {buttons.map((b) => (
           <button
             key={b.rating}
             data-sfx="none"

@@ -8,9 +8,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const saved = localStorage.getItem('inka_language');
       if (saved === 'en' || saved === 'id') return saved;
     } catch {
-      // ignore
+      
     }
-    return 'id'; // Default: Bahasa Indonesia
+    return 'id'; 
   });
 
   const setLanguage = (lang: Language) => {
@@ -18,7 +18,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       localStorage.setItem('inka_language', lang);
     } catch {
-      // ignore
+      
     }
   };
 

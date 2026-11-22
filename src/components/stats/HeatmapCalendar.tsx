@@ -19,13 +19,13 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({
   const oneDayMs = 24 * 60 * 60 * 1000;
   const days: { dateStr: string; dayOfWeek: number; count: number }[] = [];
 
-  // Align so that the last column ends with today
+  
   const totalDays = 52 * 7;
   const startDateMs = refDate.getTime() - (totalDays - 1) * oneDayMs;
 
   for (let i = 0; i < totalDays; i++) {
     const curDate = new Date(startDateMs + i * oneDayMs);
-    // Adjusted 3 AM day string
+    
     const adjusted = new Date(curDate.getTime() - 3 * 60 * 60 * 1000);
     const y = adjusted.getFullYear();
     const m = String(adjusted.getMonth() + 1).padStart(2, '0');
@@ -40,7 +40,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({
     });
   }
 
-  // Determine intensity color based on review count
+  
   const getColorClass = (count: number) => {
     if (count === 0) return 'bg-slate-100 dark:bg-slate-800/70 border border-slate-200/50 dark:border-slate-800';
     if (count <= 10) return 'bg-indigo-200 dark:bg-indigo-950 text-indigo-900 border border-indigo-300 dark:border-indigo-900';
@@ -49,7 +49,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({
     return 'bg-indigo-600 dark:bg-indigo-400 text-white font-bold';
   };
 
-  // Group into columns of weeks (7 days each)
+  
   const weeks: (typeof days)[] = [];
   for (let i = 0; i < days.length; i += 7) {
     weeks.push(days.slice(i, i + 7));
@@ -57,7 +57,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({
 
   return (
     <div className="relative space-y-2" role="img" aria-label={ariaLabel}>
-      {/* Tooltip */}
+      
       {tooltip && (
         <div
           className="fixed z-50 bg-slate-900 text-white dark:bg-slate-800 border border-slate-700 text-[11px] py-1 px-2.5 rounded-lg shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full mb-2"
@@ -67,7 +67,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({
         </div>
       )}
 
-      {/* Heatmap Grid (Scrollable on small mobile) */}
+      
       <div className="overflow-x-auto pb-2 scrollbar-thin">
         <div className="flex gap-[3px] min-w-[620px] p-1">
           {weeks.map((week, wIdx) => (
@@ -94,7 +94,7 @@ export const HeatmapCalendar: React.FC<HeatmapCalendarProps> = ({
         </div>
       </div>
 
-      {/* Heatmap Legend */}
+      
       <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1">
         <span>365 Hari Terakhir (Reset 03:00)</span>
         <div className="flex items-center gap-1.5">

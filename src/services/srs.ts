@@ -12,7 +12,7 @@ import type { CardSrs, CardState, Flashcard, ReviewRating, StudySettings } from 
 
 const STEP_RE = /^\d+[mhd]$/;
 
-/** Validasi daftar learning steps seperti "1m 10m 1h". */
+
 export function parseSteps(input: string): string[] | null {
   const parts = input.split(/[\s,]+/).map((s) => s.trim().toLowerCase()).filter(Boolean);
   if (parts.some((p) => !STEP_RE.test(p))) return null;
@@ -81,7 +81,7 @@ export function cardState(card: Flashcard): CardState {
   return card.srs?.state ?? 0;
 }
 
-/** Format selisih waktu: "<1m", "10m", "3h", "4d", "2mo", "1.5y". */
+
 export function formatInterval(ms: number): string {
   const min = ms / 60000;
   if (min < 1) return '<1m';
@@ -95,7 +95,7 @@ export function formatInterval(ms: number): string {
   return `${Math.round((days / 365) * 10) / 10}th`.replace('.0', '');
 }
 
-/** Interval berikutnya untuk tiap tombol, untuk ditampilkan di bawah label tombol. */
+
 export function previewIntervals(
   card: Flashcard,
   settings: StudySettings,
@@ -116,7 +116,7 @@ export interface AnswerResult {
   becameLeech: boolean;
 }
 
-/** Terapkan jawaban ke kartu. Fungsi murni: tidak menyentuh database. */
+
 export function answerCard(
   card: Flashcard,
   rating: ReviewRating,

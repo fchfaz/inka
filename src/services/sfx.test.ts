@@ -123,8 +123,8 @@ describe('playSfx', () => {
       return JSON.stringify(created.map((c) => c.freqs[0]));
     };
     const sigs = new Set(SFX_NAMES.map((n) => sig(n)));
-    // beberapa suara memakai nada awal yang sama (mis. 'tap' dan 'success' berbeda ukuran),
-    // tetapi urutan nada awalnya tetap harus cukup beragam
+    
+    
     expect(sigs.size).toBeGreaterThanOrEqual(SFX_NAMES.length - 3);
   });
 
@@ -136,10 +136,10 @@ describe('playSfx', () => {
 
   it('aman dipanggil tanpa Web Audio (browser lama / SSR)', async () => {
     vi.resetModules();
-    vi.stubGlobal('window', {}); // tidak ada AudioContext
+    vi.stubGlobal('window', {}); 
     const fresh = await import('./sfx');
     expect(() => fresh.playSfx('tap')).not.toThrow();
     vi.unstubAllGlobals();
-    expect(() => fresh.playSfx('good')).not.toThrow(); // tanpa window sama sekali
+    expect(() => fresh.playSfx('good')).not.toThrow(); 
   });
 });

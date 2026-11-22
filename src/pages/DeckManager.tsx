@@ -84,7 +84,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
   const [sortField, setSortField] = useState<'due' | 'created' | 'front'>('created');
   const [sortAsc, setSortAsc] = useState(false);
 
-  // Modals & Panels
+  
   const [isEditingCard, setIsEditingCard] = useState<boolean>(false);
   const [cardFormData, setCardFormData] = useState<Partial<Flashcard>>({});
   const [isCreatingDeck, setIsCreatingDeck] = useState<boolean>(false);
@@ -97,7 +97,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
 
   const [showAnkiImport, setShowAnkiImport] = useState(false);
 
-  // Ref agar penerapan daftar deck tetap stabil (tidak memicu efek ulang saat deck terpilih berubah)
+  
   const selectedDeckRef = useRef(selectedDeck);
   const onSelectDeckRef = useRef(onSelectDeck);
   useEffect(() => {
@@ -132,7 +132,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
     setCards(await getCardsByDeck(deckId));
   }, []);
 
-  // Load decks on mount
+  
   useEffect(() => {
     let cancelled = false;
     getAllDecks().then((list) => {
@@ -143,7 +143,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
     };
   }, [applyDecks]);
 
-  // Load cards when selected deck changes
+  
   const selectedDeckId = selectedDeck?.id;
   useEffect(() => {
     if (!selectedDeckId) return;
@@ -156,7 +156,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
     };
   }, [selectedDeckId]);
 
-  // Tanpa deck terpilih: tidak ada kartu / tag yang ditampilkan
+  
   const visibleCards = useMemo(() => (selectedDeck ? cards : []), [selectedDeck, cards]);
   const availableTags = useMemo(() => {
     const tagsSet = new Set<string>();
@@ -169,7 +169,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
     setTimeout(() => setFeedbackMessage(null), 3500);
   };
 
-  // Deck CRUD
+  
   const handleCreateDeck = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDeckName.trim()) return;
@@ -193,13 +193,13 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
   const handleDeleteDeck = async (deck: Deck) => {
     if (confirm(`Yakin ingin menghapus deck "${deck.name}" beserta semua kartunya?`)) {
       await deleteDeck(deck.id);
-      void pruneUnusedMedia().catch(() => undefined); // media milik deck ini tidak dirujuk lagi
+      void pruneUnusedMedia().catch(() => undefined); 
       await refreshDecks();
       notify(`Deck "${deck.name}" telah dihapus.`);
     }
   };
 
-  // Card CRUD
+  
   const handleOpenAddCard = () => {
     setCardFormData({
       front: '',
@@ -241,7 +241,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
       ...(cardFormData.extra ? { extra: cardFormData.extra } : {}),
       tags: cardFormData.tags || [],
       createdAt: cardFormData.createdAt || Date.now(),
-      // Pertahankan progres belajar saat kartu diedit
+      
       srs: cardFormData.srs,
       suspended: cardFormData.suspended,
       buriedUntil: cardFormData.buriedUntil,
@@ -264,14 +264,14 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
     }
   };
 
-  // Export JSON (isi kartu saja; untuk backup lengkap gunakan menu Pengaturan)
+  
   const handleExportJSON = async () => {
     const bundle = await exportRecallioBundle();
     downloadJson(`inka-decks-${new Date().toISOString().slice(0, 10)}.json`, bundle);
     notify('Daftar flashcard berhasil diekspor ke JSON.');
   };
 
-  // Import JSON File
+  
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -296,7 +296,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
     fileReader.readAsText(file, 'UTF-8');
   };
 
-  // Import CSV/TSV (termasuk ekspor teks Anki) ke deck yang sedang dipilih
+  
   const handleImportText = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -320,7 +320,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
     if (selectedDeck) await refreshCards(selectedDeck.id);
   };
 
-  // Open JSON Direct Editor
+  
   const handleOpenJsonEditor = async () => {
     const bundle = await exportRecallioBundle();
     setJsonText(JSON.stringify(bundle, null, 2));
@@ -347,7 +347,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
     }
   };
 
-  // Filter & Search cards
+  
   const filteredCards = useMemo(() => {
     let list = filterCardsByQuery(visibleCards, searchQuery);
     if (selectedTag !== 'all') {
@@ -419,7 +419,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-4 space-y-6">
-      {/* Toast Notification */}
+      
       {feedbackMessage && (
         <div className="fixed top-20 right-6 z-50 flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-lg animate-fade-in text-sm font-medium">
           <CheckCircle2 size={18} />
@@ -427,7 +427,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
         </div>
       )}
 
-      {/* Top Action Bar */}
+      
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{t.deckManagerTitle}</h2>
@@ -483,7 +483,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
         </div>
       </div>
 
-      {/* Deck Selector Tabs */}
+      
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
         {decks.map((deck) => (
           <div
@@ -516,7 +516,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
         ))}
       </div>
 
-      {/* Search & Tag Filter & Add Card */}
+      
       {selectedDeck && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -531,7 +531,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
               />
             </div>
 
-            {/* Tags filter */}
+            
             {availableTags.length > 0 && (
               <select
                 value={selectedTag}
@@ -547,7 +547,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
               </select>
             )}
 
-            {/* Mass Actions Toolbar */}
+            
             {selectedCardIds.size > 0 && (
               <div className="flex items-center justify-between p-2.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-xs font-semibold text-indigo-900 dark:text-indigo-200">
                 <span>{selectedCardIds.size} kartu terpilih</span>
@@ -600,7 +600,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
             </button>
           </div>
 
-          {/* Cards List Table/Grid */}
+          
           <div className="overflow-x-auto">
             {filteredCards.length === 0 ? (
               <div className="py-8 text-center text-slate-600 dark:text-slate-400 text-sm">
@@ -753,7 +753,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
         </div>
       )}
 
-      {/* Modal: Create Deck */}
+      
       <CreateDeckModal
         isOpen={isCreatingDeck}
         name={newDeckName}
@@ -764,7 +764,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
         onSubmit={handleCreateDeck}
       />
 
-      {/* Modal: Add/Edit Card */}
+      
       <CardFormModal
         isOpen={isEditingCard}
         formData={cardFormData}
@@ -783,7 +783,7 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
         }}
       />
 
-      {/* Modal: Full Direct JSON Editor */}
+      
       <JsonEditorModal
         isOpen={isJsonEditorOpen}
         jsonText={jsonText}

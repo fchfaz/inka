@@ -1,7 +1,7 @@
 export interface CardTemplate {
   name: string;
-  qfmt: string; // Question format, e.g. "{{Front}}" or "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}"
-  afmt: string; // Answer format
+  qfmt: string; 
+  afmt: string; 
 }
 
 export interface NoteTypeField {
@@ -26,11 +26,11 @@ export interface Note {
   createdAt: number;
 }
 
-/** 0 = Baru, 1 = Belajar, 2 = Review, 3 = Ulang (relearning). */
+
 export type CardState = 0 | 1 | 2 | 3;
 
 export interface CardSrs {
-  due: number; // epoch ms
+  due: number; 
   stability: number;
   difficulty: number;
   elapsedDays: number;
@@ -49,8 +49,8 @@ export interface Card {
   templateIdx: number;
   srs?: CardSrs;
   suspended?: boolean;
-  buriedUntil?: string; // studyDay 'YYYY-MM-DD'
-  flag?: number;        // 0-7
+  buriedUntil?: string; 
+  flag?: number;        
   marked?: boolean;
   createdAt: number;
 }

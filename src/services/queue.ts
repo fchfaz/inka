@@ -1,7 +1,7 @@
 import type { Flashcard, StudySettings } from '../types/flashcard';
 import { cardState } from './srs';
 
-/** Kartu learning yang jatuh tempo dalam batas ini boleh ditampilkan lebih awal. */
+
 export const LEARN_AHEAD_MS = 20 * 60 * 1000;
 
 export interface DoneToday {
@@ -19,12 +19,12 @@ export type QueueKind = 'learning' | 'review' | 'new';
 
 export interface QueueContext {
   now: number;
-  studyDay: string;      // 'YYYY-MM-DD'
-  dayEnd: number;        // epoch ms awal hari belajar berikutnya
+  studyDay: string;      
+  dayEnd: number;        
   settings: StudySettings;
   done: DoneToday;
-  extraNew?: number;     // tambahan kartu baru hari ini (Custom Study)
-  autoBurySiblings?: boolean; // otomatis kubur kartu dari note yang sama bila ada sibling yang sudah dijawab
+  extraNew?: number;     
+  autoBurySiblings?: boolean; 
   answeredNoteIdsToday?: Set<string>;
 }
 
@@ -34,7 +34,7 @@ function isEligible(c: Flashcard, studyDay: string): boolean {
   return true;
 }
 
-/** Awal hari belajar berikutnya, mengikuti jam pergantian hari. */
+
 export function getStudyDayEnd(now: number, dayStartHour: number): number {
   const d = new Date(now);
   const boundary = new Date(d.getFullYear(), d.getMonth(), d.getDate(), dayStartHour, 0, 0, 0);
@@ -45,14 +45,11 @@ export function getStudyDayEnd(now: number, dayStartHour: number): number {
 export interface QueueSnapshot {
   counts: QueueCounts;
   next: { card: Flashcard; kind: QueueKind } | null;
-  /** Kapan kartu learning berikutnya jatuh tempo (bila antrean kosong sekarang). */
+  
   nextLearningAt: number | null;
 }
 
-/**
- * Bangun antrean dan pilih kartu berikutnya.
- * Urutan: learning jatuh tempo -> review -> baru -> learning (learn-ahead).
- */
+
 export function buildQueue(cards: Flashcard[], ctx: QueueContext): QueueSnapshot {
   const { now, studyDay, dayEnd, settings, done, autoBurySiblings, answeredNoteIdsToday } = ctx;
   const eligible = cards.filter((c) => {
@@ -101,7 +98,7 @@ export function buildQueue(cards: Flashcard[], ctx: QueueContext): QueueSnapshot
   return { counts, next, nextLearningAt: futureLearning ? futureLearning.srs!.due : null };
 }
 
-/** Hitung jumlah kartu baru dan review yang sudah dikerjakan hari ini dari log. */
+
 export function countDone(logs: Array<{ stateBefore?: number; isFirstReview: boolean }>): DoneToday {
   let newDone = 0;
   let reviewsDone = 0;

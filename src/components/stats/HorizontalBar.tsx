@@ -31,7 +31,7 @@ export const HorizontalBar: React.FC<HorizontalBarProps> = ({ items, ariaLabel }
               </span>
             </div>
           </div>
-          {/* Bar track */}
+          
           <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-300"

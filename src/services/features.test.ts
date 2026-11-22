@@ -23,7 +23,7 @@ describe('katalog pesan', () => {
 
   it('EN benar-benar bahasa Inggris untuk pesan utama (bukan salinan ID)', () => {
     const same = messageKeys.filter((k) => messageDicts.en[k] === messageDicts.id[k]);
-    // yang sama boleh hanya yang netral (mis. ' · cloze')
+    
     expect(same.sort()).toEqual(['dlg.cloze', 'set.pwaTitle', 'set.volume']);
   });
 
@@ -84,9 +84,9 @@ describe('TTS cerdas', () => {
     expect(speakableText({ front: 'kucing', back: '' })).toBe('');
     expect(speakableText({ front: '猫', back: '' })).toBe('猫');
     expect(speakableText({ front: 'kucing', back: 'ねこ' })).toBe('ねこ');
-    expect(speakableText({ front: '猫', back: 'cat' })).toBe('猫'); // bacaan non-Jepang dilewati
+    expect(speakableText({ front: '猫', back: 'cat' })).toBe('猫'); 
     expect(speakableText({ front: '<ruby>水<rt>みず</rt></ruby>', back: '' })).toBe('水');
-    expect(speakableText({ front: 'kucing', back: '', meaning: '猫' })).toBe('猫'); // kartu kebalikan
+    expect(speakableText({ front: 'kucing', back: '', meaning: '猫' })).toBe('猫'); 
     expect(speakableText({ front: 'kucing', back: '', meaning: 'cat' })).toBe('');
   });
 });
@@ -108,11 +108,11 @@ describe('prune media otomatis', () => {
   it('menghapus media setelah kartu terakhir yang memakainya dihapus; media bersama dipertahankan', async () => {
     await saveDeck({ id: 'd', name: 'D', description: '', createdAt: 1 });
     const k1 = await cardWithMedia('c1', [1, 2, 3]);
-    await cardWithMedia('c2', [1, 2, 3]); // media sama (hash sama)
+    await cardWithMedia('c2', [1, 2, 3]); 
     await cardWithMedia('c3', [9, 9]);
     expect((await getMediaStats()).count).toBe(2);
     await deleteCard('c1');
-    expect((await pruneUnusedMedia()).removed).toBe(0); // k1 masih dipakai c2
+    expect((await pruneUnusedMedia()).removed).toBe(0); 
     await deleteCard('c2');
     expect((await pruneUnusedMedia()).removed).toBe(1);
     const db = await getDB();

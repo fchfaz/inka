@@ -31,7 +31,7 @@ describe('backup dengan media', () => {
     expect(f.mediaCount).toBe(1);
     const bytes = new Uint8Array(await f.blob.arrayBuffer());
 
-    // kosongkan lalu pulihkan
+    
     await resetDBConnection();
     (globalThis as { indexedDB: IDBFactory }).indexedDB = new IDBFactory();
     const { backup, media } = parseBackupBytes(bytes);

@@ -110,10 +110,7 @@ export interface ImportResult {
   cardsSkipped: number;
 }
 
-/**
- * Jalankan isi transaksi; bila ada kesalahan di tengah jalan, batalkan seluruh transaksi.
- * (IndexedDB tidak otomatis membatalkan transaksi ketika kode kita melempar error.)
- */
+
 export async function runAtomic<T>(tx: { abort(): void; done: Promise<void> }, body: () => Promise<T>): Promise<T> {
   try {
     const result = await body();
@@ -123,7 +120,7 @@ export async function runAtomic<T>(tx: { abort(): void; done: Promise<void> }, b
     try {
       tx.abort();
     } catch {
-      /* transaksi sudah selesai atau dibatalkan */
+      
     }
     await tx.done.catch(() => undefined);
     throw err;
@@ -138,12 +135,7 @@ function newId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
-/**
- * Impor bundle ke database dalam satu transaksi (semua berhasil atau tidak sama sekali).
- * - Deck dicocokkan lewat id, lalu lewat nama; bila tidak ada, dibuat baru.
- * - Kartu dengan id yang sudah ada diperbarui di tempat (progres belajar tetap).
- * - Kartu yang isinya sama dengan kartu lain di deck itu dilewati, jadi impor ulang tidak menggandakan.
- */
+
 export async function importRecallioBundle(bundle: RecallioBundle): Promise<ImportResult> {
   const db = await getDB();
   const tx = db.transaction(['decks', 'cards'], 'readwrite');
@@ -230,11 +222,11 @@ export async function importRecallioBundle(bundle: RecallioBundle): Promise<Impo
   });
 }
 
-// ---------------------------------------------------------------------------
-// CSV / TSV (termasuk "Notes in Plain Text" dari Anki)
-// ---------------------------------------------------------------------------
 
-/** Parser CSV/TSV kecil: mendukung tanda kutip ganda, kutip ter-escape (""), dan newline di dalam sel. */
+
+
+
+
 export function parseDelimited(text: string, delimiter: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
@@ -283,10 +275,7 @@ export function detectDelimiter(text: string): string {
   return counts[0][1] > 0 ? counts[0][0] : '\t';
 }
 
-/**
- * Urutan kolom: depan, belakang, arti, contoh JP, contoh hiragana, contoh terjemahan, hint, tag.
- * Baris yang diawali '#' (header Anki) dilewati.
- */
+
 export function parseCardsFromText(text: string): RecallioBundleCard[] {
   const clean = text.replace(/^﻿/, '');
   const delimiter = detectDelimiter(clean);
@@ -320,9 +309,9 @@ export async function importCardsFromText(text: string, deckId: string): Promise
   });
 }
 
-// ---------------------------------------------------------------------------
-// Backup penuh (kartu + progres + riwayat + pengaturan)
-// ---------------------------------------------------------------------------
+
+
+
 
 export async function exportFullBackup(): Promise<InkaBackup> {
   const db = await getDB();
@@ -354,13 +343,13 @@ export function validateFullBackup(data: unknown): { valid: boolean; error?: str
   return { valid: true, data: b as InkaBackup };
 }
 
-/** Ganti seluruh isi database dengan backup. Berjalan dalam satu transaksi. */
+
 export async function restoreFullBackup(
   backup: InkaBackup,
   media: Array<{ key: string; mime: string; data: ArrayBuffer }> = []
 ): Promise<{ decks: number; cards: number; logs: number; media: number }> {
   return withMediaWrite(async () => {
-  // Media lebih dulu (idempoten, kunci = hash isi). Bila nanti gagal, yang tersisa hanya media yatim yang bisa dibersihkan.
+  
   for (let i = 0; i < media.length; i += 25) await putMediaBatch(media.slice(i, i + 25));
   const db = await getDB();
   const tx = db.transaction(['decks', 'cards', 'schedules', 'revlog', 'session_state'], 'readwrite');
@@ -376,12 +365,12 @@ export async function restoreFullBackup(
   for (const c of backup.cards) await tx.objectStore('cards').put(c);
   for (const l of backup.revlog) await tx.objectStore('revlog').put(l);
   await tx.objectStore('session_state').put({ ...DEFAULT_SETTINGS, ...backup.settings }, 'settings');
-  // Backup sudah berformat FSRS, tidak perlu migrasi lagi.
+  
   await tx.objectStore('session_state').put(true, 'migrated_fsrs_v1');
   return { decks: backup.decks.length, cards: backup.cards.length, logs: backup.revlog.length, media: media.length };
   });
   }).then(async (r) => {
-    // Media lama yang tidak ada di backup tidak dirujuk kartu mana pun lagi.
+    
     await pruneUnusedMedia().catch(() => undefined);
     return r;
   });
@@ -399,9 +388,9 @@ export function downloadJson(filename: string, data: unknown): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// ---------------------------------------------------------------------------
-// Backup berkas: JSON bila tanpa media, ZIP (backup.json + media/) bila ada media
-// ---------------------------------------------------------------------------
+
+
+
 
 export interface BackupFile {
   blob: Blob;
@@ -434,7 +423,7 @@ export async function createBackupFile(): Promise<BackupFile> {
   zip.add(json);
   json.push(strToU8(JSON.stringify(backup)), true);
 
-  // Media sudah terkompresi (jpg/mp3/mp4), jadi disimpan apa adanya, satu per satu agar memori tidak berlipat.
+  
   let cursor = await db.transaction('media', 'readonly').store.openCursor();
   while (cursor) {
     const rec = cursor.value as MediaRecord;
@@ -459,7 +448,7 @@ export function downloadBlob(filename: string, blob: Blob): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** Baca berkas backup .json atau .zip. Melempar Error berpesan ramah bila tidak valid. */
+
 export function parseBackupBytes(bytes: Uint8Array): {
   backup: InkaBackup;
   media: Array<{ key: string; mime: string; data: ArrayBuffer }>;
@@ -478,7 +467,7 @@ export function parseBackupBytes(bytes: Uint8Array): {
     for (const [name, data] of Object.entries(files)) {
       if (!name.startsWith('media/') || name.length <= 6) continue;
       const key = name.slice(6);
-      if (key.includes('/') || key.includes('..')) continue; // kunci aneh: abaikan
+      if (key.includes('/') || key.includes('..')) continue; 
       media.push({ key, mime: mimeFromName(key), data: data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer });
     }
   } else {

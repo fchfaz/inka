@@ -8,7 +8,7 @@ interface SegmentedBar {
     value: number;
     name: string;
   }[];
-  secondaryValue?: number; // e.g. minutes
+  secondaryValue?: number; 
 }
 
 interface StackedBarChartProps {
@@ -34,7 +34,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
     );
   }
 
-  // Calculate maximum total value for scale
+  
   const maxVal = Math.max(
     1,
     ...data.map(d =>
@@ -46,7 +46,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
 
   return (
     <div className="space-y-3" role="img" aria-label={ariaLabel}>
-      {/* Mode Toggle Controls */}
+      
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
           Tampilan Metrik
@@ -77,9 +77,9 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
         </div>
       </div>
 
-      {/* SVG Chart Container */}
+      
       <div className="relative pt-2">
-        {/* Hover Tooltip Popup */}
+        
         {hoveredIndex !== null && data[hoveredIndex] && (
           <div className="absolute top-0 right-0 z-10 bg-slate-900 text-white dark:bg-slate-800 border border-slate-700 text-[11px] py-1 px-2.5 rounded-lg shadow-lg pointer-events-none flex items-center gap-2">
             <span className="font-semibold">{data[hoveredIndex].label}</span>
@@ -104,7 +104,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
                 onMouseLeave={() => setHoveredIndex(null)}
                 className="flex-1 min-w-[14px] max-w-[36px] h-full flex flex-col justify-end items-center group cursor-pointer"
               >
-                {/* Bar Stack */}
+                
                 <div
                   className="w-full rounded-t-sm flex flex-col-reverse overflow-hidden transition-all duration-200 group-hover:opacity-90"
                   style={{ height: `${barHeightPct}%` }}
@@ -133,7 +133,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
                   )}
                 </div>
 
-                {/* X-axis Label */}
+                
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-300 mt-1.5 truncate max-w-full text-center">
                   {bar.label}
                 </span>
@@ -143,7 +143,7 @@ export const StackedBarChart: React.FC<StackedBarChartProps> = ({
         </div>
       </div>
 
-      {/* Legend */}
+      
       {mode === 'cards' && (
         <div className="flex items-center justify-center gap-3 text-[11px] text-slate-600 dark:text-slate-400 pt-1 flex-wrap">
           <div className="flex items-center gap-1">

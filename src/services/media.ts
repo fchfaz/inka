@@ -5,10 +5,10 @@ import type { MediaKind } from './richText';
 import { extractMediaRefs } from './richText';
 
 export interface MediaRecord {
-  key: string;         // '<hash>.<ext>'
+  key: string;         
   mime: string;
   size: number;
-  data: ArrayBuffer;   // ArrayBuffer (bukan Blob) agar aman di semua browser/IndexedDB
+  data: ArrayBuffer;   
   addedAt: number;
 }
 
@@ -24,7 +24,7 @@ const MIME: Record<string, string> = {
   mp4: 'video/mp4', webm: 'video/webm', m4v: 'video/mp4', mov: 'video/quicktime', ogv: 'video/ogg',
 };
 
-export const MAX_MEDIA_BYTES = 150 * 1024 * 1024; // batas satu berkas
+export const MAX_MEDIA_BYTES = 150 * 1024 * 1024; 
 
 export class MediaStorageError extends Error {
   readonly code: 'quota' | 'too-large' | 'unsupported' | 'unknown';
@@ -52,7 +52,7 @@ export function mimeFromName(name: string): string {
   return MIME[extOf(name)] ?? 'application/octet-stream';
 }
 
-/** SHA-256 (dipotong 24 hex) bila crypto.subtle tersedia, selain itu FNV-1a ganda. */
+
 export async function hashBytes(bytes: Uint8Array): Promise<string> {
   const subtle = typeof crypto !== 'undefined' ? crypto.subtle : undefined;
   if (subtle) {
@@ -61,7 +61,7 @@ export async function hashBytes(bytes: Uint8Array): Promise<string> {
     const digest = await subtle.digest('SHA-256', copy.buffer);
     return Array.from(new Uint8Array(digest).slice(0, 12), (b) => b.toString(16).padStart(2, '0')).join('');
   }
-  // Konteks tidak aman (http non-localhost): crypto.subtle tidak ada.
+  
   let h1 = 0x811c9dc5;
   let h2 = 0x01000193 ^ bytes.length;
   for (let i = 0; i < bytes.length; i++) {
@@ -82,12 +82,12 @@ function isQuotaError(err: unknown): boolean {
 }
 
 
-/** Minta browser agar tidak menghapus data situs ini saat ruang menipis (best-effort). */
+
 export async function requestPersistentStorage(): Promise<boolean> {
   try {
     if (typeof navigator !== 'undefined' && navigator.storage?.persist) return await navigator.storage.persist();
   } catch {
-    /* tidak didukung */
+    
   }
   return false;
 }
@@ -99,12 +99,12 @@ export async function storageEstimate(): Promise<{ usage: number; quota: number 
       return { usage: e.usage ?? 0, quota: e.quota ?? 0 };
     }
   } catch {
-    /* tidak didukung */
+    
   }
   return null;
 }
 
-/** Simpan sekelompok media dalam satu transaksi; yang sudah ada dilewati. Mengembalikan jumlah baru. */
+
 export async function putMediaBatch(records: Array<{ key: string; mime: string; data: ArrayBuffer }>): Promise<number> {
   if (records.length === 0) return 0;
   const db = await getDB();
@@ -123,7 +123,7 @@ export async function putMediaBatch(records: Array<{ key: string; mime: string; 
     try {
       tx.abort();
     } catch {
-      /* sudah selesai */
+      
     }
     await tx.done.catch(() => undefined);
     if (isQuotaError(err)) throw new MediaStorageError(msg('media.quota'), 'quota');
@@ -139,7 +139,7 @@ export async function getMediaRecord(key: string): Promise<MediaRecord | undefin
 
 const urlCache = new Map<string, Promise<string | null>>();
 
-/** URL objek untuk <img>/<audio>/<video>. Di-cache; null bila media tidak ada. */
+
 export function getMediaUrl(key: string): Promise<string | null> {
   let p = urlCache.get(key);
   if (!p) {
@@ -149,7 +149,7 @@ export function getMediaUrl(key: string): Promise<string | null> {
       return URL.createObjectURL(new Blob([rec.data], { type: rec.mime }));
     })().catch(() => null);
     urlCache.set(key, p);
-    // Jangan menyimpan hasil null: media bisa saja ditambahkan kemudian.
+    
     p.then((v) => {
       if (v === null) urlCache.delete(key);
     });
@@ -162,7 +162,7 @@ export function clearMediaUrlCache(): void {
   urlCache.clear();
 }
 
-/** Lampirkan berkas buatan pengguna ke kartu. Mengembalikan token untuk disisipkan ke teks. */
+
 export async function addMediaFile(file: File): Promise<string> {
   const kind = kindFromName(file.name);
   if (!kind) {
@@ -202,7 +202,7 @@ export function cardMediaText(c: Flashcard): string {
 }
 
 let mediaWrites = 0;
-/** Tandai penulisan media yang belum disusul penulisan kartu (impor/pemulihan), agar prune otomatis tidak menghapusnya. */
+
 export async function withMediaWrite<T>(body: () => Promise<T>): Promise<T> {
   mediaWrites++;
   try {
@@ -212,10 +212,7 @@ export async function withMediaWrite<T>(body: () => Promise<T>): Promise<T> {
   }
 }
 
-/**
- * Hapus media yang tidak dirujuk kartu mana pun. Dilewati bila sedang ada impor/pemulihan
- * (kecuali force), karena media baru belum tentu sudah dirujuk kartu.
- */
+
 export async function pruneUnusedMedia(opts: { force?: boolean } = {}): Promise<{ removed: number; freedBytes: number }> {
   if (mediaWrites > 0 && !opts.force) return { removed: 0, freedBytes: 0 };
   const db = await getDB();
@@ -253,7 +250,7 @@ export async function isStoragePersistent(): Promise<boolean> {
   try {
     if (typeof navigator !== 'undefined' && navigator.storage?.persisted) return await navigator.storage.persisted();
   } catch {
-    /* tidak didukung */
+    
   }
   return false;
 }

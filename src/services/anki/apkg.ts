@@ -1,8 +1,4 @@
-/**
- * Pembaca paket Anki (.apkg / .colpkg) — tanpa efek samping, tidak menyentuh IndexedDB.
- * Mendukung tiga generasi format: legacy1 (collection.anki2), legacy2 (collection.anki21)
- * dan terbaru (collection.anki21b, zstd + media protobuf).
- */
+
 import { msg } from '../messages';
 import { unzipSync } from 'fflate';
 import { decompress as zstdDecompress } from 'fzstd';
@@ -40,26 +36,26 @@ export interface AnkiMediaEntry { name: string; zipName: string }
 
 export interface AnkiPackage {
   format: 'legacy1' | 'legacy2' | 'latest';
-  crt: number;                         // detik epoch, dasar hari jatuh tempo review
+  crt: number;                         
   notetypes: Map<string, AnkiNotetype>;
-  decks: Map<string, string>;          // id -> nama berhirarki ("A::B")
+  decks: Map<string, string>;          
   notes: AnkiNote[];
   cards: AnkiCard[];
   revlog: AnkiRevlog[];
   mediaEntries: AnkiMediaEntry[];
-  /** Ambil isi berkas media (dekompresi sesuai format). Hasil per nama; yang tidak ada dilewati. */
+  
   loadMedia(names: string[]): Map<string, Uint8Array>;
 }
 
-export const MAX_PACKAGE_BYTES = 1024 * 1024 * 1024; // 1 GB
+export const MAX_PACKAGE_BYTES = 1024 * 1024 * 1024; 
 
 const ZSTD_MAGIC = [0x28, 0xb5, 0x2f, 0xfd];
 const isZstd = (b: Uint8Array) => b.length > 4 && ZSTD_MAGIC.every((v, i) => b[i] === v);
 const maybeZstd = (b: Uint8Array) => (isZstd(b) ? zstdDecompress(b) : b);
 
-// ---------------------------------------------------------------------------
-// Protobuf kecil (hanya yang dibutuhkan untuk daftar media)
-// ---------------------------------------------------------------------------
+
+
+
 function readVarint(b: Uint8Array, pos: number): [number, number] {
   let result = 0;
   let shift = 0;
@@ -73,7 +69,7 @@ function readVarint(b: Uint8Array, pos: number): [number, number] {
   }
 }
 
-/** Urai pesan: kembalikan [fieldNo, wireType, nilai (angka | Uint8Array)] */
+
 function* protoFields(b: Uint8Array): Generator<[number, number, number | Uint8Array]> {
   let pos = 0;
   while (pos < b.length) {
@@ -115,9 +111,9 @@ export function parseMediaProtobuf(b: Uint8Array): string[] {
   return names;
 }
 
-// ---------------------------------------------------------------------------
-// SQLite
-// ---------------------------------------------------------------------------
+
+
+
 export type SqlFactory = () => Promise<SqlJsStatic>;
 
 let defaultFactory: SqlFactory | null = null;
@@ -151,7 +147,7 @@ function rows(db: Database, sql: string): Row[] {
 const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v ?? 0) || 0);
 const str = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '' : String(v));
 
-/** Anki baru memakai kolasi `unicase` buatan sendiri yang tidak dikenal sql.js: buang dari skema. */
+
 async function openCollection(SQL: SqlJsStatic, bytes: Uint8Array): Promise<Database> {
   let db: Database;
   try {
@@ -177,9 +173,9 @@ function tableExists(db: Database, name: string): boolean {
 
 const normDeck = (n: string) => n.split('\x1f').join('::');
 
-// ---------------------------------------------------------------------------
-// Utama
-// ---------------------------------------------------------------------------
+
+
+
 export async function readAnkiPackage(input: Uint8Array, factory?: SqlFactory): Promise<AnkiPackage> {
   if (input.byteLength > MAX_PACKAGE_BYTES) {
     throw new AnkiImportError('too-large', msg('anki.tooLarge'));
@@ -219,7 +215,7 @@ export async function readAnkiPackage(input: Uint8Array, factory?: SqlFactory): 
     }
     const noteCount = num(db.exec('select count(*) from notes')[0]?.values[0][0]);
     if (noteCount === 0) {
-      // Paket "stub" buatan Anki baru: hanya collection.anki2 kosong dengan kartu peringatan.
+      
       const looksStub = format === 'legacy1' && !!core['meta'];
       throw new AnkiImportError(
         looksStub ? 'stub-only' : 'empty',
@@ -252,7 +248,7 @@ export async function readAnkiPackage(input: Uint8Array, factory?: SqlFactory): 
                 if (f === 1) qfmt = dec.decode(v as Uint8Array);
                 else if (f === 2) afmt = dec.decode(v as Uint8Array);
               }
-            } catch { /* template tidak terbaca: abaikan, tidak kritis */ }
+            } catch {  }
           }
           return { name: str(t.name), qfmt, afmt };
         });
@@ -306,7 +302,7 @@ export async function readAnkiPackage(input: Uint8Array, factory?: SqlFactory): 
         }))
       : [];
 
-    // Peta media
+    
     const mediaEntries: AnkiMediaEntry[] = [];
     const mediaRaw = core['media'];
     if (mediaRaw && mediaRaw.length) {
@@ -319,7 +315,7 @@ export async function readAnkiPackage(input: Uint8Array, factory?: SqlFactory): 
           parseMediaProtobuf(bytes).forEach((name, i) => name && mediaEntries.push({ name, zipName: String(i) }));
         }
       } catch {
-        // Daftar media rusak: kartu tetap diimpor tanpa media, pemanggil melaporkan lewat 'missing'.
+        
       }
     }
 
@@ -341,7 +337,7 @@ export async function readAnkiPackage(input: Uint8Array, factory?: SqlFactory): 
       for (const [zipName, data] of Object.entries(files)) {
         try {
           out.set(wanted.get(zipName)!, format === 'latest' ? maybeZstd(data) : data);
-        } catch { /* berkas media rusak: dilewati */ }
+        } catch {  }
       }
       return out;
     };

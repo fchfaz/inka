@@ -107,7 +107,7 @@ describe('saveCardWithLog + undoReview', () => {
 
 describe('hari belajar & pengaturan', () => {
   it('jam pergantian hari mempengaruhi studyDay', () => {
-    const t = new Date(2026, 2, 10, 2, 30); // 02:30
+    const t = new Date(2026, 2, 10, 2, 30); 
     setDayStartHour(3);
     expect(getStudyDayString(t)).toBe('2026-03-09');
     setDayStartHour(0);
@@ -251,7 +251,7 @@ describe('backup penuh', () => {
     const backup = JSON.parse(JSON.stringify(await exportFullBackup()));
     expect(validateFullBackup(backup).valid).toBe(true);
 
-    // rusak data lalu pulihkan
+    
     await deleteDeck('d1');
     await saveDeck({ id: 'zzz', name: 'Z', description: '', createdAt: 1 });
     await restoreFullBackup(backup);
@@ -260,7 +260,7 @@ describe('backup penuh', () => {
     expect((await getAllCards())[0].srs?.state).toBe(2);
     expect(await getAllReviewLogs()).toHaveLength(1);
     expect((await getSettings()).newPerDay).toBe(9);
-    // tidak memicu migrasi ulang
+    
     expect(await migrateLegacyProgress()).toBe(0);
   });
 
@@ -300,7 +300,7 @@ describe('migrasi v4: Note, NoteType, Card', () => {
     const noteTypes = await getAllNoteTypes();
     expect(noteTypes.length).toBeGreaterThanOrEqual(5);
 
-    // Migrasi berikutnya tidak memproses ulang
+    
     expect(await migrateV4Notes()).toBe(0);
   });
 });

@@ -19,12 +19,12 @@ export interface AnkiImportProgress {
 export interface AnkiImportSummary {
   decksCreated: number;
   cardsAdded: number;
-  cardsSkipped: number;      // sudah ada (impor ulang) -> dibiarkan, progres Anda aman
-  emptyCards: number;        // kartu tanpa isi depan, dilewati
+  cardsSkipped: number;      
+  emptyCards: number;        
   logsAdded: number;
-  mediaStored: number;       // berkas media baru yang disimpan
-  mediaMissing: string[];    // dirujuk kartu tetapi tidak ada di paket
-  mediaSkipped: string[];    // jenis tidak didukung / terlalu besar / rusak
+  mediaStored: number;       
+  mediaMissing: string[];    
+  mediaSkipped: string[];    
   skippedNotetypes: Array<{ name: string; cards: number; reason: string }>;
 }
 
@@ -53,13 +53,13 @@ async function runImport(
   onProgress?: (p: AnkiImportProgress) => void,
   signal?: AbortSignal
 ): Promise<AnkiImportSummary> {
-  // 1) Kumpulkan nama media yang benar-benar dirujuk kartu yang akan diimpor.
+  
   const scan = convertPackage(pkg, opts, (name) => {
     const kind = kindFromName(name);
     return kind ? { kind, key: 'scan' } : null;
   });
 
-  // 2) Simpan media bertahap (idempoten: kunci = hash isi).
+  
   const resolved = new Map<string, MediaResolution>();
   const mediaSkipped: string[] = [];
   let mediaStored = 0;
@@ -76,7 +76,7 @@ async function runImport(
       for (const name of chunk) {
         const bytes = loaded.get(name);
         if (!bytes) {
-          if (inPackage.has(name)) mediaSkipped.push(name); // ada di daftar tetapi gagal dibaca
+          if (inPackage.has(name)) mediaSkipped.push(name); 
           continue;
         }
         const kind = kindFromName(name);
@@ -89,19 +89,19 @@ async function runImport(
         batch.push({ key, mime: mimeFromName(name), data });
         resolved.set(name, { kind, key });
       }
-      mediaStored += await putMediaBatch(batch); // MediaStorageError('quota') naik ke pemanggil
+      mediaStored += await putMediaBatch(batch); 
       done += chunk.length;
       onProgress?.({ phase: 'media', done, total: names.length });
     }
     void requestPersistentStorage();
   }
 
-  // 3) Konversi final dengan kunci media yang sebenarnya.
+  
   abortIf(signal);
   const conv = convertPackage(pkg, opts, (name) => resolved.get(name) ?? null);
   const mediaMissing = [...conv.mediaMissing].filter((n) => !mediaSkipped.includes(n));
 
-  // 4) Tulis deck + kartu + riwayat dalam SATU transaksi (semua atau tidak sama sekali).
+  
   const db = await getDB();
   const summary: AnkiImportSummary = {
     decksCreated: 0, cardsAdded: 0, cardsSkipped: 0, emptyCards: conv.emptyCards, logsAdded: 0,
@@ -119,7 +119,7 @@ async function runImport(
       const noteStore = tx.objectStore('notes');
       const ntStore = tx.objectStore('noteTypes');
 
-      // Simpan notetype Anki
+      
       if (conv.notetypes) {
         for (const nt of conv.notetypes) {
           const existing = await ntStore.get(nt.id);
@@ -170,7 +170,7 @@ async function runImport(
         if (existing) {
           summary.cardsSkipped++;
         } else {
-          // Simpan Note jika ada
+          
           if (item.note) {
             const existingNote = await noteStore.get(item.note.id);
             if (!existingNote) {
@@ -187,7 +187,7 @@ async function runImport(
         }
       }
 
-      // Riwayat: kartu baru -> semua; kartu lama -> hanya yang belum ada (cardId + ts).
+      
       const existingTs = new Map<string, Set<number>>();
       for (const id of new Set(conv.logs.map((l) => l.inkaCardId))) {
         if (added.has(id)) continue;

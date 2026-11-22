@@ -1,4 +1,4 @@
-/** Pengingat backup berkala. Semua di localStorage; gagal diam-diam bila tidak tersedia. */
+
 
 const LAST = 'inka_last_backup';
 const FIRST = 'inka_first_seen';
@@ -32,11 +32,11 @@ function write(s: Store | null, key: string, value: number): void {
   try {
     s?.setItem(key, String(value));
   } catch {
-    /* penyimpanan penuh / diblokir */
+    
   }
 }
 
-/** Catat pertama kali aplikasi dipakai (dasar hitungan bila belum pernah backup). */
+
 export function ensureFirstSeen(now = Date.now(), s: Store | null = store()): void {
   if (read(s, FIRST) === null) write(s, FIRST, now);
 }
@@ -52,8 +52,8 @@ export function snoozeBackupReminder(now = Date.now(), s: Store | null = store()
 
 export interface Reminder {
   remind: boolean;
-  never: boolean; // belum pernah backup
-  days: number;   // umur backup terakhir (atau pemakaian pertama) dalam hari
+  never: boolean; 
+  days: number;   
 }
 
 export function backupReminder(hasData: boolean, now = Date.now(), s: Store | null = store()): Reminder {

@@ -5,49 +5,49 @@ import { getStudyDayEnd } from './queue';
 export type TimeRangeKey = '7d' | '1m' | '3m' | '1y' | 'all';
 
 export interface StatsFilter {
-  deckId?: string; // undefined or 'all' = all decks
+  deckId?: string; 
   range: TimeRangeKey;
 }
 
 export interface DayActivity {
-  date: string; // 'YYYY-MM-DD' (studyDay)
+  date: string; 
   count: number;
   ratingCounts: Record<ReviewRating, number>;
   totalDurationMs: number;
 }
 
 export interface HourlyStats {
-  hour: number; // 0..23
+  hour: number; 
   totalReviews: number;
-  passReviews: number; // ratings 2, 3, 4
-  passRate: number; // 0..100
+  passReviews: number; 
+  passRate: number; 
 }
 
 export interface ProblemCardStat {
   card: Flashcard;
   againCount: number;
   totalReviews: number;
-  passRate: number; // 0..100
+  passRate: number; 
   lastReviewedTs: number;
 }
 
 export interface StatsSummary {
-  // 1. KPI Top Summary
+  
   todayCardsStudied: number;
   todayDurationMs: number;
-  todayPassRate: number; // 0..100
+  todayPassRate: number; 
   todayAvgSecPerCard: number;
   currentStreakDays: number;
   longestStreakDays: number;
   totalDaysStudied: number;
 
-  // 2. Calendar / Heatmap (up to 365 days / past 1 year)
+  
   heatmapData: Map<string, DayActivity>;
   minDateStr: string;
   maxDateStr: string;
   avgDailyReviews: number;
 
-  // 3. Review Volume & Time (grouped by day, or week/month for wider ranges)
+  
   timelineBars: {
     label: string;
     date: string;
@@ -59,7 +59,7 @@ export interface StatsSummary {
     durationMinutes: number;
   }[];
 
-  // 4. Answer Buttons Distribution
+  
   buttonDistribution: {
     rating: ReviewRating;
     label: string;
@@ -67,55 +67,53 @@ export interface StatsSummary {
     count: number;
     percentage: number;
   }[];
-  overallPassRate: number; // (Hard + Good + Easy) / Total
+  overallPassRate: number; 
   firstReviewPassRate: number;
   repeatedReviewPassRate: number;
 
-  // 5. Card Counts (Status based on latest review)
+  
   cardCounts: {
-    newCount: number;      // Belum pernah direview
-    weakCount: number;     // Terakhir Again / Hard
-    goodCount: number;     // Terakhir Good
-    strongCount: number;   // Terakhir Easy
+    newCount: number;      
+    weakCount: number;     
+    goodCount: number;     
+    strongCount: number;   
     totalDeckCards: number;
   };
 
-  // 6. Future Due Queue (berdasarkan tanggal jatuh tempo FSRS)
+  
   futureDue: {
-    dueNow: number;       // sudah jatuh tempo / jatuh tempo hari ini
-    tomorrow: number;     // besok
-    in2to7: number;       // 2-7 hari lagi
-    in8to30: number;      // 8-30 hari lagi
-    beyond30: number;     // > 30 hari
+    dueNow: number;       
+    tomorrow: number;     
+    in2to7: number;       
+    in8to30: number;      
+    beyond30: number;     
     totalScheduled: number;
   };
 
-  // 7. Hourly Breakdown (0..23 local hours)
+  
   hourly: HourlyStats[];
 
-  // 8. Problem Cards (Top leeches with highest 'Again' counts)
+  
   problemCards: ProblemCardStat[];
 
-  // 9. Added Cards Timeline (createdAt)
+  
   addedTimeline: {
     label: string;
     count: number;
   }[];
 
-  // 10. Time per Card
+  
   timeStats: {
     overallAvgMs: number;
     overallMedianMs: number;
     avgByRatingMs: Record<ReviewRating, number>;
   };
 
-  // Raw counts
+  
   totalReviewsInRange: number;
 }
 
-/**
- * Filter logs by timestamp according to selected TimeRangeKey
- */
+
 export function filterLogsByRange(logs: ReviewLog[], range: TimeRangeKey, now = Date.now()): ReviewLog[] {
   if (range === 'all') return logs;
 
@@ -129,9 +127,7 @@ export function filterLogsByRange(logs: ReviewLog[], range: TimeRangeKey, now = 
   return logs.filter(l => l.ts >= minTs);
 }
 
-/**
- * Pure calculation engine for all Inka statistics
- */
+
 export function calculateStats(
   allLogs: ReviewLog[],
   cards: Flashcard[],
@@ -141,7 +137,7 @@ export function calculateStats(
   const filteredLogs = filterLogsByRange(allLogs, filter.range, referenceDate.getTime());
   const todayStudyDay = getStudyDayString(referenceDate);
 
-  // Group all logs by studyDay across all time for streak calculation
+  
   const allDaysActivity = new Map<string, DayActivity>();
   for (const log of allLogs) {
     const day = log.studyDay;
@@ -160,19 +156,19 @@ export function calculateStats(
     act.totalDurationMs += log.durationMs;
   }
 
-  // --- Streak Calculation ---
+  
   let currentStreak = 0;
   let longestStreak = 0;
   let tempStreak = 0;
 
-  // Generate consecutive day strings backwards starting from today
+  
   const oneDayMs = 24 * 60 * 60 * 1000;
 
-  // Check if today has study activity; if not, check if yesterday had activity (current streak not yet lost today)
+  
   const todayAct = allDaysActivity.get(todayStudyDay);
   let streakAnchorDate = new Date(referenceDate);
   if (!todayAct || todayAct.count === 0) {
-    // Yesterday
+    
     streakAnchorDate = new Date(referenceDate.getTime() - oneDayMs);
   }
 
@@ -188,7 +184,7 @@ export function calculateStats(
     }
   }
 
-  // Longest streak calculation across sorted unique days
+  
   const sortedDays = Array.from(allDaysActivity.keys()).sort();
   for (let i = 0; i < sortedDays.length; i++) {
     if (i === 0) {
@@ -211,7 +207,7 @@ export function calculateStats(
     longestStreak = currentStreak;
   }
 
-  // --- 1. KPI Top Summary (Today) ---
+  
   const todayLogs = allLogs.filter(l => l.studyDay === todayStudyDay);
   const todayCardsStudied = todayLogs.length;
   const todayDurationMs = todayLogs.reduce((acc, l) => acc + l.durationMs, 0);
@@ -220,9 +216,9 @@ export function calculateStats(
   const todayAvgSecPerCard = todayCardsStudied > 0 ? Math.round((todayDurationMs / todayCardsStudied) / 1000) : 0;
   const totalDaysStudied = allDaysActivity.size;
 
-  // --- 2. Calendar / Heatmap (Past 365 Days) ---
+  
   const heatmapData = new Map<string, DayActivity>();
-  // We want to fill 52 weeks (approx 364/365 days)
+  
   const heatmapStart = new Date(referenceDate.getTime() - 364 * oneDayMs);
   const minDateStr = getStudyDayString(heatmapStart);
   const maxDateStr = todayStudyDay;
@@ -237,13 +233,13 @@ export function calculateStats(
   const daysWithReviewsCount = Array.from(heatmapData.values()).filter(d => d.count > 0).length;
   const avgDailyReviews = daysWithReviewsCount > 0 ? Math.round(totalReviewsInHeatmap / daysWithReviewsCount) : 0;
 
-  // --- 3. Review Volume & Time (Timeline Bars based on filter range) ---
+  
   const timelineMap = new Map<string, { again: number; hard: number; good: number; easy: number; total: number; durationMs: number }>();
   
-  // Decide grouping granularity: daily for 7d, 1m, 3m; weekly/monthly for 1y, all
+  
   const rangeDaysCount = filter.range === '7d' ? 7 : filter.range === '1m' ? 30 : filter.range === '3m' ? 90 : 365;
 
-  // Pre-populate keys for recent daily views so empty days show 0
+  
   if (filter.range === '7d' || filter.range === '1m') {
     for (let d = rangeDaysCount - 1; d >= 0; d--) {
       const dt = new Date(referenceDate.getTime() - d * oneDayMs);
@@ -270,7 +266,7 @@ export function calculateStats(
   const sortedTimelineKeys = Array.from(timelineMap.keys()).sort();
   const timelineBars = sortedTimelineKeys.map(key => {
     const val = timelineMap.get(key)!;
-    // Format label for display (e.g. "12/03" or "DD/MM")
+    
     const parts = key.split('-');
     const label = `${parts[2]}/${parts[1]}`;
     return {
@@ -285,7 +281,7 @@ export function calculateStats(
     };
   });
 
-  // --- 4. Answer Buttons Distribution ---
+  
   const ratingCounts: Record<ReviewRating, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
   let firstPass = 0;
   let firstTotal = 0;
@@ -342,7 +338,7 @@ export function calculateStats(
   const firstReviewPassRate = firstTotal > 0 ? Math.round((firstPass / firstTotal) * 100) : 0;
   const repeatedReviewPassRate = repeatTotal > 0 ? Math.round((repeatPass / repeatTotal) * 100) : 0;
 
-  // --- 5. Card Counts (Status based on latest review across all time) ---
+  
   const latestLogPerCard = new Map<string, ReviewLog>();
   for (const log of allLogs) {
     const existing = latestLogPerCard.get(log.cardId);
@@ -361,18 +357,18 @@ export function calculateStats(
     if (!lastRev) {
       newCount++;
     } else if (lastRev.rating <= 2) {
-      // Again (1) or Hard (2) -> Lemah
+      
       weakCount++;
     } else if (lastRev.rating === 3) {
-      // Good (3) -> Baik
+      
       goodCount++;
     } else {
-      // Easy (4) -> Kuat
+      
       strongCount++;
     }
   }
 
-  // --- 6. Future Due Queue (berdasarkan due date FSRS) ---
+  
   let dueNow = 0;
   let tomorrow = 0;
   let in2to7 = 0;
@@ -393,7 +389,7 @@ export function calculateStats(
     else beyond30++;
   }
 
-  // --- 7. Hourly Breakdown (0..23 local hours) ---
+  
   const hourMap: Record<number, { total: number; pass: number }> = {};
   for (let h = 0; h < 24; h++) hourMap[h] = { total: 0, pass: 0 };
 
@@ -415,7 +411,7 @@ export function calculateStats(
     });
   }
 
-  // --- 8. Problem Cards (Top Leeches) ---
+  
   const cardLogStats = new Map<string, { again: number; total: number; pass: number; lastTs: number }>();
   for (const log of allLogs) {
     let stat = cardLogStats.get(log.cardId);
@@ -445,11 +441,11 @@ export function calculateStats(
       });
     }
   }
-  // Sort descending by againCount, then by lower passRate
+  
   problemCards.sort((a, b) => b.againCount - a.againCount || a.passRate - b.passRate);
   const top10ProblemCards = problemCards.slice(0, 10);
 
-  // --- 9. Added Cards Timeline (from card.createdAt) ---
+  
   const addedMap = new Map<string, number>();
   for (const card of cards) {
     const dayStr = getStudyDayString(new Date(card.createdAt));
@@ -464,7 +460,7 @@ export function calculateStats(
     };
   });
 
-  // --- 10. Time per Card (durationMs analysis) ---
+  
   const durations = filteredLogs.map(l => l.durationMs).sort((a, b) => a - b);
   const totalDurationAll = durations.reduce((acc, d) => acc + d, 0);
   const overallAvgMs = durations.length > 0 ? Math.round(totalDurationAll / durations.length) : 0;

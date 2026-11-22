@@ -1,6 +1,4 @@
-/**
- * Konversi isi paket Anki -> kartu, deck, dan riwayat review Inka. Murni (tanpa IndexedDB).
- */
+
 import type { CardSrs, CardState, Flashcard, ReviewLog, ReviewRating, StudySettings } from '../../types/flashcard';
 import { convertAnkiFieldHtml, type MediaResolution } from '../richText';
 import { parseSteps } from '../srs';
@@ -18,7 +16,7 @@ export const INKA_FIELDS: Array<{ key: InkaField; label: string }> = [
   { key: 'extra', label: 'Catatan / media tambahan' },
 ];
 
-/** Nama field Anki per bidang Inka (boleh lebih dari satu; digabung dengan baris baru). */
+
 export type FieldMapping = Partial<Record<InkaField, string[]>>;
 
 export interface NotetypeMapping {
@@ -36,9 +34,9 @@ export interface ConvertOptions {
   studyDayOf: (ts: number) => string;
 }
 
-// ---------------------------------------------------------------------------
-// Tebakan pemetaan
-// ---------------------------------------------------------------------------
+
+
+
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9぀-ヿ一-鿿]/g, '');
 
 const GUESS: Array<[InkaField, string[]]> = [
@@ -70,7 +68,7 @@ export function guessMapping(nt: AnkiNotetype): NotetypeMapping {
     return { enabled: false, mapping };
   }
 
-  // Satu field Anki dipetakan paling banyak sekali; urutan GUESS menentukan prioritas.
+  
   for (const [key, names] of GUESS) {
     for (const f of nt.fields) {
       if (used.has(f)) continue;
@@ -80,7 +78,7 @@ export function guessMapping(nt: AnkiNotetype): NotetypeMapping {
       }
     }
   }
-  // Cadangan posisi
+  
   if (!mapping.front && nt.fields.length) {
     const first = nt.fields.find((f) => !used.has(f));
     if (first) assign('front', first);
@@ -89,14 +87,14 @@ export function guessMapping(nt: AnkiNotetype): NotetypeMapping {
     const second = nt.fields.find((f) => !used.has(f));
     if (second) assign('meaning', second);
   }
-  // Apa pun yang tersisa (audio, gambar, klip, catatan) masuk ke "extra" supaya tidak ada data yang hilang.
+  
   for (const f of nt.fields) if (!used.has(f)) assign('extra', f);
   return { enabled: true, mapping };
 }
 
-// ---------------------------------------------------------------------------
-// Cloze
-// ---------------------------------------------------------------------------
+
+
+
 const CLOZE_RE = /\{\{c(\d+)::([\s\S]*?)(?:::([\s\S]*?))?\}\}/g;
 
 export function renderCloze(html: string, active: number): { question: string; answer: string } {
@@ -107,9 +105,9 @@ export function renderCloze(html: string, active: number): { question: string; a
   return { question, answer };
 }
 
-// ---------------------------------------------------------------------------
-// Penjadwalan Anki -> CardSrs
-// ---------------------------------------------------------------------------
+
+
+
 const DAY_MS = 86400000;
 
 interface FsrsData { s?: number; d?: number; lrt?: number }
@@ -138,8 +136,8 @@ export function convertScheduling(
   const due0 = c.odid !== '0' && c.odid !== '' && c.odue ? c.odue : c.due;
   const isLearning = c.type === 1 || c.type === 3;
 
-  // review (type 2) dan learning antar-hari (queue 3): due = nomor hari sejak crt.
-  // learning/relearning biasa (queue 1): due = detik epoch.
+  
+  
   const dayBased = c.type === 2 || c.queue === 3 || c.queue === 2;
   let dueMs = dayBased ? (crtSec + due0 * 86400) * 1000 : due0 * 1000;
   if (!Number.isFinite(dueMs) || dueMs < 0 || dueMs > 8.64e15) dueMs = Date.now();
@@ -174,9 +172,9 @@ export function convertScheduling(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Konversi paket
-// ---------------------------------------------------------------------------
+
+
+
 export interface ConvertedCard {
   card: Omit<Flashcard, 'deckId'>;
   deckName: string;
@@ -198,9 +196,9 @@ export interface ConvertResult {
   logs: ConvertedLog[];
   skippedNotetypes: Array<{ name: string; cards: number; reason: string }>;
   emptyCards: number;
-  mediaNames: Set<string>;     // semua nama media yang dirujuk kartu yang diimpor
-  mediaMissing: Set<string>;   // dirujuk tetapi tidak ada di paket / tidak didukung
-  mediaUsed: Set<string>;      // kunci media yang benar-benar dipakai
+  mediaNames: Set<string>;     
+  mediaMissing: Set<string>;   
+  mediaUsed: Set<string>;      
   notetypes?: Array<{
     id: string;
     name: string;
@@ -210,7 +208,7 @@ export interface ConvertResult {
   }>;
 }
 
-/** Fields yang dirujuk template pertanyaan: {{Field}}, {{type:Field}}, {{furigana:Field}} ... */
+
 function questionFields(qfmt: string): Set<string> {
   const out = new Set<string>();
   const re = /\{\{([^{}]+?)\}\}/g;
@@ -256,7 +254,7 @@ export function convertPackage(
   };
 
   const skippedCount = new Map<string, { name: string; cards: number; reason: string }>();
-  const idMap = new Map<string, string>(); // ankiCardId -> inka id
+  const idMap = new Map<string, string>(); 
   const deckOfCard = new Map<string, string>();
 
   for (const c of pkg.cards) {
@@ -292,7 +290,7 @@ export function convertPackage(
     if (nt.isCloze) {
       const { question, answer } = renderCloze(vals.front, c.ord + 1);
       vals.front = question;
-      // jawaban penuh ditaruh di "arti" bila kosong; bila sudah ada isi, di bagian atas "extra"
+      
       vals.meaning = vals.meaning ? `${answer}<br>${vals.meaning}` : answer;
     } else {
       const tmpl = nt.templates[c.ord] ?? nt.templates[0];
@@ -301,7 +299,7 @@ export function convertPackage(
         const frontIn = (cfg.mapping.front ?? []).some((f) => q.has(f));
         const meaningIn = (cfg.mapping.meaning ?? []).some((f) => q.has(f));
         if (!frontIn && meaningIn) {
-          // kartu kebalikan: pertanyaan = arti, jawaban = kata
+          
           [vals.front, vals.meaning] = [vals.meaning, vals.front];
         }
       }
@@ -339,7 +337,7 @@ export function convertPackage(
       card.suspended = true;
     }
 
-    // Bangun raw fields untuk note asli
+    
     const rawNoteFields: Record<string, string> = {};
     nt.fields.forEach((fName, idx) => {
       rawNoteFields[fName] = conv(note.fields[idx] || '');
@@ -362,7 +360,7 @@ export function convertPackage(
     deckOfCard.set(c.id, deckName);
   }
 
-  // Simpan definisi notetype Anki asli agar tersimpan di Inka
+  
   res.notetypes = Array.from(pkg.notetypes.values()).map((nt) => ({
     id: `anki-nt-${nt.id}`,
     name: nt.name,

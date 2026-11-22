@@ -63,7 +63,7 @@ describe('answerCard (FSRS)', () => {
     let t = new Date(card.srs!.due);
     let leeched = false;
     for (let i = 0; i < 2; i++) {
-      // gagal, lalu lulus lagi lewat relearning
+      
       let r = answerCard(card, 1, settings, t);
       leeched = r.becameLeech;
       card = r.card;
@@ -175,7 +175,7 @@ describe('buildQueue', () => {
     const snap = buildQueue(cards, ctx());
     expect(snap.next?.card.id).toBe('ok');
     expect(snap.counts.newCount).toBe(1);
-    // bury kedaluwarsa pada hari berikutnya
+    
     expect(buildQueue([cards[1]], ctx({ studyDay: '2026-03-11' })).next?.card.id).toBe('b');
   });
 

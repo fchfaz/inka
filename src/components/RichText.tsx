@@ -17,7 +17,7 @@ function useMediaUrl(key: string): { url: string | null; failed: boolean } {
   return { url: cur ? state.url : null, failed: cur && state.done && !state.url };
 }
 
-const stop = (e: React.SyntheticEvent) => e.stopPropagation(); // jangan membalik kartu saat menyentuh pemutar
+const stop = (e: React.SyntheticEvent) => e.stopPropagation(); 
 
 const MediaView: React.FC<{ kind: 'img' | 'sound' | 'video'; mediaKey: string }> = ({ kind, mediaKey }) => {
   const m = useMsg();
@@ -60,7 +60,7 @@ function renderNodes(nodes: RichNode[], prefix = ''): React.ReactNode[] {
   });
 }
 
-/** Render isi kartu (teks + sedikit HTML aman + media) tanpa innerHTML. */
+
 export const RichText: React.FC<{ text: string | undefined; className?: string }> = ({ text, className }) => {
   const nodes = useMemo(() => parseRich(text ?? ''), [text]);
   if (!text) return null;

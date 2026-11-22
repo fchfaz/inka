@@ -12,7 +12,7 @@ import { toPlainText } from '../services/richText';
 import type { MsgKey, MsgParams } from '../services/messages';
 import { useMsg } from '../context/useMsg';
 
-type Targets = Record<string, Record<string, InkaField | ''>>; // ntId -> fieldName -> target
+type Targets = Record<string, Record<string, InkaField | ''>>; 
 interface NtState { enabled: boolean; targets: Record<string, InkaField | ''> }
 
 function invert(m: NotetypeMapping): Record<string, InkaField | ''> {

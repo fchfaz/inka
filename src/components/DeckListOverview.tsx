@@ -30,9 +30,9 @@ export const DeckListOverview: React.FC<DeckListOverviewProps> = ({
   const studyDay = getStudyDayString(new Date(now));
   const dayEnd = getStudyDayEnd(now, settings.dayStartHour);
 
-  // Hitung jumlah kartu per deck (termasuk subdeck)
+  
   const deckStats: DeckStudyStats[] = decks.map((deck) => {
-    // Cari semua subdeck ID
+    
     const descendantIds = new Set<string>([deck.id]);
     let added = true;
     while (added) {

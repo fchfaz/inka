@@ -1,12 +1,4 @@
-/**
- * Rich text aman untuk isi kartu.
- *
- * Format simpan (string biasa) = teks + sebagian kecil HTML (b, i, u, sub, sup, ruby, rt, rp, br)
- * + token media: [img:KUNCI] [sound:KUNCI] [video:KUNCI].
- *
- * Tidak memakai innerHTML sama sekali: string diurai menjadi pohon node (RichNode) lalu dirender
- * sebagai elemen React, jadi isi dari paket Anki yang tidak tepercaya tidak bisa menjalankan skrip.
- */
+
 
 export type MediaKind = 'img' | 'sound' | 'video';
 
@@ -22,7 +14,7 @@ const INLINE_ALIAS: Record<string, InlineTag> = {
   b: 'b', strong: 'b', i: 'i', em: 'i', u: 'u', sub: 'sub', sup: 'sup', ruby: 'ruby', rt: 'rt', rp: 'rp',
 };
 const BLOCK_TAGS = new Set(['div', 'p', 'li', 'ul', 'ol', 'tr', 'table', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'hr']);
-/** Isi tag ini dibuang total (bukan hanya tag-nya). */
+
 const DROP_CONTENT = new Set(['script', 'style', 'title', 'head', 'noscript', 'template', 'iframe', 'object', 'embed', 'textarea', 'select', 'svg', 'math']);
 
 const NAMED_ENTITIES: Record<string, string> = {
@@ -42,14 +34,14 @@ export function decodeEntities(s: string): string {
 }
 
 function escapeText(s: string): string {
-  // '[' yang diikuti img:/sound:/video: di-escape supaya teks biasa tidak pernah terbaca sebagai token media
+  
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\[(?=(?:sound|img|video):)/gi, '&#91;');
 }
 
 const TOKEN_RE =
   /<!--[\s\S]*?-->|<(\/?)([a-zA-Z][a-zA-Z0-9]*)\b[^>]*?(\/?)>|\[(sound|img|video):([^\]\n]{1,300})\]/g;
 
-/** Urai string simpan menjadi pohon node. Tidak pernah melempar error. */
+
 export function parseRich(input: string): RichNode[] {
   const root: RichNode[] = [];
   const stack: Array<{ tag: InlineTag; c: RichNode[] }> = [];
@@ -76,7 +68,7 @@ export function parseRich(input: string): RichNode[] {
       continue;
     }
     const tagName = m[2]?.toLowerCase();
-    if (!tagName) continue; // komentar HTML
+    if (!tagName) continue; 
     const closing = m[1] === '/';
 
     if (!closing && DROP_CONTENT.has(tagName)) {
@@ -107,13 +99,13 @@ export function parseRich(input: string): RichNode[] {
         }
       }
     }
-    // tag lain (a, span, font, img, dll.): dibuang, isinya tetap dipertahankan
+    
   }
   pushText(src.slice(pos));
   return normalizeBreaks(root);
 }
 
-/** Rapikan baris kosong: buang <br> lunak di awal/akhir atau yang menempel pada <br> lain. */
+
 function normalizeBreaks(nodes: RichNode[]): RichNode[] {
   const out: RichNode[] = [];
   for (const n of nodes) {
@@ -139,7 +131,7 @@ function serializeNodes(nodes: RichNode[]): string {
   return s;
 }
 
-/** Bersihkan HTML bebas menjadi string simpan yang aman (whitelist). */
+
 export function sanitizeRich(input: string): string {
   return serializeNodes(parseRich(input));
 }
@@ -152,22 +144,22 @@ function plain(nodes: RichNode[], parts: string[]): void {
   }
 }
 
-/** Teks polos untuk pencarian, tabel, TTS, dan notifikasi. Media diabaikan, anotasi ruby dibuang. */
+
 export function toPlainText(input: string): string {
   if (!input) return '';
-  // jalur cepat: tanpa karakter markup sama sekali
+  
   if (!/[<&[]/.test(input)) return input;
   const parts: string[] = [];
   plain(parseRich(input), parts);
   return parts.join('').replace(/\s+/g, ' ').trim();
 }
 
-/** Teks untuk dibacakan TTS: pakai anotasi ruby bila ada (bacaan hiragana), selain itu teks polos. */
+
 export function toSpeechText(input: string): string {
   return toPlainText(input).replace(/ /g, ' ');
 }
 
-/** Buang token media (untuk format tukar teks-saja seperti bundle JSON). */
+
 export function stripMediaTokens(input: string): string {
   return (input ?? '').replace(/\s*\[(sound|img|video):[^\]\n]{1,300}\]\s*/g, ' ').trim();
 }
@@ -180,9 +172,9 @@ export function extractMediaRefs(input: string): Array<{ kind: MediaKind; key: s
   return out;
 }
 
-// ---------------------------------------------------------------------------
-// Konversi isi field Anki -> string simpan Inka
-// ---------------------------------------------------------------------------
+
+
+
 
 export interface MediaResolution {
   kind: MediaKind;
@@ -191,8 +183,8 @@ export interface MediaResolution {
 
 export interface ConvertedField {
   text: string;
-  missing: string[];   // nama file media yang dirujuk tetapi tidak ada di paket
-  used: string[];      // kunci media yang dipakai
+  missing: string[];   
+  used: string[];      
 }
 
 const MEDIA_REF_RE = /<(?:img|audio|video|source)\b[^>]*>|\[sound:([^\]\n]+)\]/gi;

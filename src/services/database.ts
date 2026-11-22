@@ -6,13 +6,13 @@ import { DEFAULT_SETTINGS, DEFAULT_DECK_PRESET } from '../types/flashcard';
 import { answerCard } from './srs';
 import { configureSfx } from './sfx';
 
-// Nama database tetap 'recallio_db' agar data pengguna lama tidak hilang.
+
 const DB_NAME = 'recallio_db';
 const DB_VERSION = 4;
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
-/** Koneksi dibuka sekali lalu dipakai ulang. */
+
 export function getDB(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = openDbInternal().catch((err) => {
@@ -23,7 +23,7 @@ export function getDB(): Promise<IDBPDatabase> {
   return dbPromise;
 }
 
-/** Hanya untuk pengujian: tutup dan lupakan koneksi. */
+
 export async function resetDBConnection(): Promise<void> {
   if (dbPromise) {
     const db = await dbPromise;
@@ -47,7 +47,7 @@ function openDbInternal(): Promise<IDBPDatabase> {
         }
 
         if (!db.objectStoreNames.contains('schedules')) {
-          // key is cardId (one active interval schedule per card)
+          
           db.createObjectStore('schedules', { keyPath: 'cardId' });
         }
 
@@ -67,14 +67,14 @@ function openDbInternal(): Promise<IDBPDatabase> {
       }
 
       if (oldVersion < 3) {
-        // Berkas media kartu (gambar/audio/video), kunci = hash isi + ekstensi
+        
         if (!db.objectStoreNames.contains('media')) {
           db.createObjectStore('media', { keyPath: 'key' });
         }
       }
 
       if (oldVersion < 4) {
-        // v4: Store notes dan noteTypes
+        
         if (!db.objectStoreNames.contains('noteTypes')) {
           db.createObjectStore('noteTypes', { keyPath: 'id' });
         }
@@ -84,7 +84,7 @@ function openDbInternal(): Promise<IDBPDatabase> {
           noteStore.createIndex('by-notetype', 'noteTypeId');
         }
 
-        // Tambah index pada cards untuk performa (state dan due)
+        
         const cardStore = db.objectStoreNames.contains('cards')
           ? transaction.objectStore('cards')
           : db.createObjectStore('cards', { keyPath: 'id' });
@@ -106,7 +106,7 @@ function openDbInternal(): Promise<IDBPDatabase> {
   });
 }
 
-// Initial Sample Deck Loader
+
 export async function initializeDefaultDeck(): Promise<void> {
   const db = await getDB();
   const deckCount = await db.count('decks');
@@ -210,7 +210,7 @@ export async function initializeDefaultDeck(): Promise<void> {
   }
 }
 
-// Deck Operations
+
 export async function getAllDecks(): Promise<Deck[]> {
   const db = await getDB();
   return db.getAll('decks');
@@ -232,7 +232,7 @@ export async function deleteDeck(deckId: string): Promise<void> {
     await cardStore.delete(card.id);
   }
 
-  // Hapus riwayat review deck ini agar statistik tidak memuat data yatim.
+  
   let cursor = await tx.objectStore('revlog').index('by-deck').openCursor(deckId);
   while (cursor) {
     await cursor.delete();
@@ -242,12 +242,12 @@ export async function deleteDeck(deckId: string): Promise<void> {
   await tx.done;
 }
 
-// Flashcard Operations
+
 export async function getCardsByDeck(deckId: string): Promise<Flashcard[]> {
   const db = await getDB();
   const allDecks: Deck[] = await db.getAll('decks');
 
-  // Cari semua sub-deck (turunan hierarki langsung maupun tidak langsung)
+  
   const descendantDeckIds = new Set<string>([deckId]);
   let added = true;
   while (added) {
@@ -260,12 +260,12 @@ export async function getCardsByDeck(deckId: string): Promise<Flashcard[]> {
     }
   }
 
-  // Jika tidak punya sub-deck, langsung query index
+  
   if (descendantDeckIds.size === 1) {
     return db.getAllFromIndex('cards', 'by-deck', deckId);
   }
 
-  // Kumpulkan kartu dari deck ini dan semua sub-decknya
+  
   const cards: Flashcard[] = [];
   for (const id of descendantDeckIds) {
     const deckCards = await db.getAllFromIndex('cards', 'by-deck', id);
@@ -274,9 +274,9 @@ export async function getCardsByDeck(deckId: string): Promise<Flashcard[]> {
   return cards;
 }
 
-// ---------------------------------------------------------------------------
-// Deck Preset Operations
-// ---------------------------------------------------------------------------
+
+
+
 export async function getAllDeckPresets(): Promise<DeckPreset[]> {
   const db = await getDB();
   const presets = (await db.get('session_state', 'deck_presets')) as DeckPreset[] | undefined;
@@ -338,7 +338,7 @@ export async function deleteCard(cardId: string): Promise<void> {
   const card: Flashcard | undefined = await cardStore.get(cardId);
   await cardStore.delete(cardId);
 
-  // Jika kartu memiliki noteId dan tidak ada kartu lain untuk note tsb, hapus note
+  
   if (card?.noteId) {
     const siblingCards = await cardStore.index('by-note').getAll(card.noteId);
     if (siblingCards.length === 0) {
@@ -348,14 +348,14 @@ export async function deleteCard(cardId: string): Promise<void> {
   await tx.done;
 }
 
-// ---------------------------------------------------------------------------
-// Note & NoteType Operations (v4)
-// ---------------------------------------------------------------------------
+
+
+
 export async function getAllNoteTypes(): Promise<NoteType[]> {
   const db = await getDB();
   const noteTypes: NoteType[] = await db.getAll('noteTypes');
   if (noteTypes.length === 0) {
-    // Inisialisasi default jika kosong
+    
     const tx = db.transaction('noteTypes', 'readwrite');
     for (const nt of BUILTIN_NOTE_TYPES) {
       await tx.store.put(nt);
@@ -402,9 +402,9 @@ export async function deleteNote(noteId: string): Promise<void> {
   await tx.done;
 }
 
-// ---------------------------------------------------------------------------
-// Hari belajar (batas pergantian hari bisa diatur, default 03:00)
-// ---------------------------------------------------------------------------
+
+
+
 let dayStartHour = DEFAULT_SETTINGS.dayStartHour;
 
 export function setDayStartHour(hour: number): void {
@@ -415,7 +415,7 @@ export function getDayStartHour(): number {
   return dayStartHour;
 }
 
-/** Format 'YYYY-MM-DD' dengan batas pergantian hari sesuai pengaturan. */
+
 export function getStudyDayString(date = new Date()): string {
   const adjusted = new Date(date.getTime() - dayStartHour * 60 * 60 * 1000);
   const y = adjusted.getFullYear();
@@ -424,9 +424,9 @@ export function getStudyDayString(date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
-// ---------------------------------------------------------------------------
-// Pengaturan
-// ---------------------------------------------------------------------------
+
+
+
 export async function getSettings(): Promise<StudySettings> {
   const db = await getDB();
   const stored = (await db.get('session_state', 'settings')) as Partial<StudySettings> | undefined;
@@ -443,9 +443,9 @@ export async function saveSettings(settings: StudySettings): Promise<void> {
   configureSfx({ enabled: settings.soundEnabled, volume: settings.soundVolume });
 }
 
-// ---------------------------------------------------------------------------
-// Review log
-// ---------------------------------------------------------------------------
+
+
+
 export async function getDailyStudiedCount(): Promise<number> {
   const db = await getDB();
   return db.countFromIndex('revlog', 'by-studyDay', getStudyDayString());
@@ -459,10 +459,7 @@ export async function getReviewLogsForDay(studyDay: string, deckId?: string): Pr
 
 export type NewReviewLog = Omit<ReviewLog, 'id' | 'studyDay' | 'isFirstReview'>;
 
-/**
- * Simpan kartu yang sudah dijadwalkan ulang beserta log-nya dalam satu transaksi,
- * sehingga keduanya selalu konsisten walau aplikasi tertutup di tengah jalan.
- */
+
 export async function saveCardWithLog(card: Flashcard, log: NewReviewLog): Promise<ReviewLog> {
   const db = await getDB();
   const tx = db.transaction(['cards', 'revlog'], 'readwrite');
@@ -482,7 +479,7 @@ export async function saveCardWithLog(card: Flashcard, log: NewReviewLog): Promi
   return fullLog;
 }
 
-/** Batalkan satu jawaban: kembalikan kartu ke keadaan sebelumnya dan hapus log-nya. */
+
 export async function undoReview(previousCard: Flashcard, logId: number | undefined): Promise<void> {
   const db = await getDB();
   const tx = db.transaction(['cards', 'revlog'], 'readwrite');
@@ -491,7 +488,7 @@ export async function undoReview(previousCard: Flashcard, logId: number | undefi
   await tx.done;
 }
 
-/** Tambah log lepas (dipakai seed data dan pengujian). */
+
 export async function addReviewLog(log: NewReviewLog): Promise<ReviewLog> {
   const db = await getDB();
   const studyDay = getStudyDayString(new Date(log.ts));
@@ -530,9 +527,7 @@ export async function clearAllReviewLogs(): Promise<void> {
   await db.clear('revlog');
 }
 
-/**
- * Seed dummy review logs for development and visual testing of Statistics dashboard
- */
+
 export async function seedDummyReviewLogs(targetDeckId: string, cards: Flashcard[]): Promise<number> {
   const db = await getDB();
   if (cards.length === 0) return 0;
@@ -542,16 +537,16 @@ export async function seedDummyReviewLogs(targetDeckId: string, cards: Flashcard
   const dayMs = 24 * 60 * 60 * 1000;
   let seeded = 0;
 
-  // Generate reviews across the past 90 days with realistic distribution
+  
   for (let d = 90; d >= 0; d--) {
-    // Some days skipped (85% active days)
+    
     if (Math.random() < 0.15 && d > 2) continue;
 
-    const reviewsToday = Math.floor(10 + Math.random() * 45); // 10 - 55 reviews
+    const reviewsToday = Math.floor(10 + Math.random() * 45); 
     const baseDayTime = now - d * dayMs;
 
     for (let i = 0; i < reviewsToday; i++) {
-      // Pick random hour: peaks in morning 8-10 and evening 19-23
+      
       let hour = 20;
       const r = Math.random();
       if (r < 0.25) hour = 8 + Math.floor(Math.random() * 3);
@@ -561,7 +556,7 @@ export async function seedDummyReviewLogs(targetDeckId: string, cards: Flashcard
       const reviewTs = baseDayTime + hour * 3600000 + Math.floor(Math.random() * 3600000);
       const randomCard = cards[Math.floor(Math.random() * cards.length)];
 
-      // Rating distribution: Again 15%, Hard 20%, Good 45%, Easy 20%
+      
       let rating: 1 | 2 | 3 | 4 = 3;
       const rateRoll = Math.random();
       if (rateRoll < 0.15) rating = 1;
@@ -570,7 +565,7 @@ export async function seedDummyReviewLogs(targetDeckId: string, cards: Flashcard
       else rating = 4;
 
       const days: Record<number, number> = { 1: 0, 2: 1, 3: 4, 4: 10 };
-      const durationMs = Math.floor(2000 + Math.random() * 7000); // 2 - 9 seconds
+      const durationMs = Math.floor(2000 + Math.random() * 7000); 
 
       const logItem: ReviewLog = {
         cardId: randomCard.id,
@@ -592,16 +587,16 @@ export async function seedDummyReviewLogs(targetDeckId: string, cards: Flashcard
   return seeded;
 }
 
-// ---------------------------------------------------------------------------
-// Migrasi ke v4 (Note, NoteType, Card)
-// ---------------------------------------------------------------------------
+
+
+
 const MIGRATION_V4_FLAG = 'migrated_notes_v4';
 
 export async function migrateV4Notes(): Promise<number> {
   const db = await getDB();
   if (await db.get('session_state', MIGRATION_V4_FLAG)) return 0;
 
-  // Pastikan noteTypes standar ada
+  
   const ntTx = db.transaction('noteTypes', 'readwrite');
   for (const nt of BUILTIN_NOTE_TYPES) {
     await ntTx.store.put(nt);
@@ -650,15 +645,12 @@ export async function migrateV4Notes(): Promise<number> {
   return migrated;
 }
 
-// ---------------------------------------------------------------------------
-// Migrasi dari penjadwal "interval kartu" lama ke FSRS
-// ---------------------------------------------------------------------------
+
+
+
 const MIGRATION_FLAG = 'migrated_fsrs_v1';
 
-/**
- * Hitung ulang status FSRS tiap kartu dengan memutar ulang riwayat review lamanya,
- * lalu buang data jadwal berbasis hitungan kartu. Hanya berjalan sekali.
- */
+
 export async function migrateLegacyProgress(settings: StudySettings = DEFAULT_SETTINGS): Promise<number> {
   const db = await getDB();
   if (await db.get('session_state', MIGRATION_FLAG)) return 0;
