@@ -21,6 +21,7 @@ import {
 import { cardState } from '../services/srs';
 import { toPlainText } from '../services/richText';
 import { addMediaFile, MediaStorageError, pruneUnusedMedia } from '../services/media';
+import { filterCardsByQuery } from '../services/searchParser';
 import {
   Plus,
   Trash2,
@@ -79,6 +80,9 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string>('all');
+  const [selectedCardIds, setSelectedCardIds] = useState<Set<string>>(new Set());
+  const [sortField, setSortField] = useState<'due' | 'created' | 'front'>('created');
+  const [sortAsc, setSortAsc] = useState(false);
 
   // Modals & Panels
   const [isEditingCard, setIsEditingCard] = useState<boolean>(false);
@@ -343,17 +347,75 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
     }
   };
 
-  // Filter cards
-  const filteredCards = visibleCards.filter((card) => {
-    const matchesSearch =
-      [card.front, card.back, card.meaning, card.example_jp, card.extra ?? '']
-        .map((f) => toPlainText(f).toLowerCase())
-        .some((f) => f.includes(searchQuery.toLowerCase()));
+  // Filter & Search cards
+  const filteredCards = useMemo(() => {
+    let list = filterCardsByQuery(visibleCards, searchQuery);
+    if (selectedTag !== 'all') {
+      list = list.filter((c) => c.tags && c.tags.includes(selectedTag));
+    }
 
-    const matchesTag = selectedTag === 'all' || (card.tags && card.tags.includes(selectedTag));
+    return list.sort((a, b) => {
+      let cmp = 0;
+      if (sortField === 'due') {
+        const dueA = a.srs?.due ?? 0;
+        const dueB = b.srs?.due ?? 0;
+        cmp = dueA - dueB;
+      } else if (sortField === 'front') {
+        cmp = toPlainText(a.front).localeCompare(toPlainText(b.front));
+      } else {
+        cmp = (a.createdAt || 0) - (b.createdAt || 0);
+      }
+      return sortAsc ? cmp : -cmp;
+    });
+  }, [visibleCards, searchQuery, selectedTag, sortField, sortAsc]);
 
-    return matchesSearch && matchesTag;
-  });
+  const handleBulkSuspend = async (suspend: boolean) => {
+    if (!selectedDeck || selectedCardIds.size === 0) return;
+    const targetCards = cards.filter((c) => selectedCardIds.has(c.id));
+    for (const c of targetCards) {
+      await saveCard({ ...c, suspended: suspend });
+    }
+    await refreshCards(selectedDeck.id);
+    setSelectedCardIds(new Set());
+    notify(`${targetCards.length} kartu ${suspend ? 'ditangguhkan' : 'diaktifkan kembali'}.`);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedDeck || selectedCardIds.size === 0) return;
+    if (confirm(`Yakin ingin menghapus ${selectedCardIds.size} kartu terpilih?`)) {
+      for (const id of selectedCardIds) {
+        await deleteCard(id);
+      }
+      void pruneUnusedMedia().catch(() => undefined);
+      await refreshCards(selectedDeck.id);
+      setSelectedCardIds(new Set());
+      notify('Kartu terpilih telah dihapus.');
+    }
+  };
+
+  const handleBulkReset = async () => {
+    if (!selectedDeck || selectedCardIds.size === 0) return;
+    if (confirm(`Kembalikan ${selectedCardIds.size} kartu menjadi baru (reset progres)?`)) {
+      const targetCards = cards.filter((c) => selectedCardIds.has(c.id));
+      for (const c of targetCards) {
+        await saveCard({ ...c, srs: undefined });
+      }
+      await refreshCards(selectedDeck.id);
+      setSelectedCardIds(new Set());
+      notify(`${targetCards.length} kartu telah di-reset menjadi baru.`);
+    }
+  };
+
+  const handleBulkFlag = async (flagNumber: number) => {
+    if (!selectedDeck || selectedCardIds.size === 0) return;
+    const targetCards = cards.filter((c) => selectedCardIds.has(c.id));
+    for (const c of targetCards) {
+      await saveCard({ ...c, flag: flagNumber === c.flag ? 0 : flagNumber });
+    }
+    await refreshCards(selectedDeck.id);
+    setSelectedCardIds(new Set());
+    notify(`Flag kartu terpilih diperbarui.`);
+  };
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-4 space-y-6">
@@ -485,6 +547,51 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
               </select>
             )}
 
+            {/* Mass Actions Toolbar */}
+            {selectedCardIds.size > 0 && (
+              <div className="flex items-center justify-between p-2.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-xs font-semibold text-indigo-900 dark:text-indigo-200">
+                <span>{selectedCardIds.size} kartu terpilih</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => handleBulkSuspend(true)}
+                    className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100"
+                  >
+                    Tangguhkan
+                  </button>
+                  <button
+                    onClick={() => handleBulkSuspend(false)}
+                    className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100"
+                  >
+                    Aktifkan
+                  </button>
+                  <button
+                    onClick={handleBulkReset}
+                    className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100"
+                  >
+                    Reset (Jadikan Baru)
+                  </button>
+                  <button
+                    onClick={() => handleBulkFlag(1)}
+                    className="px-2.5 py-1 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg hover:bg-rose-100"
+                  >
+                    🚩 Merah
+                  </button>
+                  <button
+                    onClick={() => handleBulkFlag(2)}
+                    className="px-2.5 py-1 bg-amber-50 text-amber-600 border border-amber-200 rounded-lg hover:bg-amber-100"
+                  >
+                    🚩 Oranye
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="px-2.5 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            )}
+
             <button
               onClick={handleOpenAddCard}
               className="flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-xs transition"
@@ -503,78 +610,142 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
               <table className="w-full text-left text-sm text-slate-700 dark:text-slate-300">
                 <thead className="text-xs uppercase bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
                   <tr>
-                    <th className="py-3 px-4">Depan (Kanji)</th>
+                    <th className="py-3 px-3 w-8">
+                      <input
+                        type="checkbox"
+                        checked={selectedCardIds.size === filteredCards.length && filteredCards.length > 0}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedCardIds(new Set(filteredCards.map((c) => c.id)));
+                          } else {
+                            setSelectedCardIds(new Set());
+                          }
+                        }}
+                      />
+                    </th>
+                    <th
+                      className="py-3 px-4 cursor-pointer hover:text-indigo-600"
+                      onClick={() => {
+                        setSortField('front');
+                        setSortAsc(!sortAsc);
+                      }}
+                    >
+                      Depan (Kanji) {sortField === 'front' && (sortAsc ? '↑' : '↓')}
+                    </th>
                     <th className="py-3 px-4">Belakang (Hiragana)</th>
                     <th className="py-3 px-4">Arti</th>
                     <th className="py-3 px-4">Contoh Kalimat</th>
-                    <th className="py-3 px-4">Status</th>
+                    <th
+                      className="py-3 px-4 cursor-pointer hover:text-indigo-600"
+                      onClick={() => {
+                        setSortField('due');
+                        setSortAsc(!sortAsc);
+                      }}
+                    >
+                      Status / Due {sortField === 'due' && (sortAsc ? '↑' : '↓')}
+                    </th>
                     <th className="py-3 px-4">Tags</th>
                     <th className="py-3 px-4 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredCards.map((card) => (
-                    <tr key={card.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition">
-                      <td className="py-3 px-4 font-bold text-slate-900 dark:text-white text-base">
-                        {toPlainText(card.front)}
-                      </td>
-                      <td className="py-3 px-4 font-medium">{toPlainText(card.back)}</td>
-                      <td className="py-3 px-4 font-semibold text-slate-900 dark:text-slate-200">
-                        {toPlainText(card.meaning)}
-                      </td>
-                      <td className="py-3 px-4 text-xs max-w-xs truncate" title={toPlainText(card.example_jp)}>
-                        <div className="font-japanese font-medium text-slate-800 dark:text-slate-200">{toPlainText(card.example_jp)}</div>
-                        <div className="text-slate-600 dark:text-slate-400">{toPlainText(card.example_id)}</div>
-                      </td>
-                      <td className="py-3 px-4 text-xs whitespace-nowrap">
-                        {card.suspended ? (
-                          <span className="text-amber-700 dark:text-amber-400 font-semibold">Ditangguhkan</span>
-                        ) : (
-                          <>
-                            <span className="font-semibold">{STATE_LABEL[cardState(card)]}</span>
-                            {card.srs && card.srs.state !== 0 && (
-                              <span className="text-slate-600 dark:text-slate-400"> · {formatDue(card.srs.due)}</span>
-                            )}
-                          </>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex gap-1 flex-wrap">
-                          {card.tags?.map((t) => (
-                            <span key={t} className="text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => handleToggleSuspend(card)}
-                            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-amber-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-                            title={card.suspended ? 'Aktifkan kembali' : 'Tangguhkan'}
-                            aria-label={card.suspended ? 'Aktifkan kembali kartu' : 'Tangguhkan kartu'}
-                          >
-                            {card.suspended ? <Play size={16} /> : <Pause size={16} />}
-                          </button>
-                          <button
-                            onClick={() => handleOpenEditCard(card)}
-                            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-                            title="Edit Kartu"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCard(card)}
-                            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-red-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-                            title="Hapus Kartu"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredCards.map((card) => {
+                    const isSelected = selectedCardIds.has(card.id);
+                    return (
+                      <tr
+                        key={card.id}
+                        className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition ${
+                          isSelected ? 'bg-indigo-50/50 dark:bg-indigo-950/30' : ''
+                        }`}
+                      >
+                        <td className="py-3 px-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              const s = new Set(selectedCardIds);
+                              if (e.target.checked) s.add(card.id);
+                              else s.delete(card.id);
+                              setSelectedCardIds(s);
+                            }}
+                          />
+                        </td>
+                        <td className="py-3 px-4 font-bold text-slate-900 dark:text-white text-base">
+                          <div className="flex items-center gap-1.5">
+                            {card.flag && card.flag > 0 ? (
+                              <span
+                                className={`text-xs ${
+                                  card.flag === 1
+                                    ? 'text-red-500'
+                                    : card.flag === 2
+                                    ? 'text-orange-500'
+                                    : 'text-blue-500'
+                                }`}
+                              >
+                                🚩
+                              </span>
+                            ) : null}
+                            <span>{toPlainText(card.front)}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 font-medium">{toPlainText(card.back)}</td>
+                        <td className="py-3 px-4 font-semibold text-slate-900 dark:text-slate-200">
+                          {toPlainText(card.meaning)}
+                        </td>
+                        <td className="py-3 px-4 text-xs max-w-xs truncate" title={toPlainText(card.example_jp)}>
+                          <div className="font-japanese font-medium text-slate-800 dark:text-slate-200">{toPlainText(card.example_jp)}</div>
+                          <div className="text-slate-600 dark:text-slate-400">{toPlainText(card.example_id)}</div>
+                        </td>
+                        <td className="py-3 px-4 text-xs whitespace-nowrap">
+                          {card.suspended ? (
+                            <span className="text-amber-700 dark:text-amber-400 font-semibold">Ditangguhkan</span>
+                          ) : (
+                            <>
+                              <span className="font-semibold">{STATE_LABEL[cardState(card)]}</span>
+                              {card.srs && card.srs.state !== 0 && (
+                                <span className="text-slate-600 dark:text-slate-400"> · {formatDue(card.srs.due)}</span>
+                              )}
+                            </>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex gap-1 flex-wrap">
+                            {card.tags?.map((t) => (
+                              <span key={t} className="text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleToggleSuspend(card)}
+                              className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-amber-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                              title={card.suspended ? 'Aktifkan kembali' : 'Tangguhkan'}
+                              aria-label={card.suspended ? 'Aktifkan kembali kartu' : 'Tangguhkan kartu'}
+                            >
+                              {card.suspended ? <Play size={16} /> : <Pause size={16} />}
+                            </button>
+                            <button
+                              onClick={() => handleOpenEditCard(card)}
+                              className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                              title="Edit Kartu"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCard(card)}
+                              className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-red-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                              title="Hapus Kartu"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

@@ -24,6 +24,8 @@ export interface QueueContext {
   settings: StudySettings;
   done: DoneToday;
   extraNew?: number;     // tambahan kartu baru hari ini (Custom Study)
+  autoBurySiblings?: boolean; // otomatis kubur kartu dari note yang sama bila ada sibling yang sudah dijawab
+  answeredNoteIdsToday?: Set<string>;
 }
 
 function isEligible(c: Flashcard, studyDay: string): boolean {
@@ -52,8 +54,14 @@ export interface QueueSnapshot {
  * Urutan: learning jatuh tempo -> review -> baru -> learning (learn-ahead).
  */
 export function buildQueue(cards: Flashcard[], ctx: QueueContext): QueueSnapshot {
-  const { now, studyDay, dayEnd, settings, done } = ctx;
-  const eligible = cards.filter((c) => isEligible(c, studyDay));
+  const { now, studyDay, dayEnd, settings, done, autoBurySiblings, answeredNoteIdsToday } = ctx;
+  const eligible = cards.filter((c) => {
+    if (!isEligible(c, studyDay)) return false;
+    if (autoBurySiblings && c.noteId && answeredNoteIdsToday?.has(c.noteId)) {
+      return false;
+    }
+    return true;
+  });
 
   const learningAll = eligible
     .filter((c) => {
