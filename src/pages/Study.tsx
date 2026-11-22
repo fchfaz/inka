@@ -36,6 +36,8 @@ interface StudyProps {
   currentDeck: Deck | null;
   onSelectDeck: (deck: Deck) => void;
   onNavigateToDeckManager: () => void;
+  showDeckList: boolean;
+  onShowDeckListChange: (show: boolean) => void;
 }
 
 type UndoEntry =
@@ -53,11 +55,16 @@ function formatClock(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavigateToDeckManager }) => {
+export const Study: React.FC<StudyProps> = ({
+  currentDeck,
+  onSelectDeck,
+  onNavigateToDeckManager,
+  showDeckList,
+  onShowDeckListChange: setShowDeckList,
+}) => {
   const { t } = useTranslation();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [allCards, setAllCards] = useState<FlashcardType[]>([]);
-  const [showDeckList, setShowDeckList] = useState(false);
   const [cardCount, setCardCount] = useState(0);
   const [settings, setSettings] = useState<StudySettings>(DEFAULT_SETTINGS);
   const [current, setCurrent] = useState<Current | null>(null);

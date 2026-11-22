@@ -37,6 +37,8 @@ function MainContent() {
   const [reminder, setReminder] = useState<{ never: boolean; days: number } | null>(null);
   const [currentPage, setCurrentPage] = useState<'study' | 'decks' | 'stats' | 'settings'>('study');
   const [currentDeck, setCurrentDeck] = useState<Deck | null>(null);
+  // Daftar deck menjadi halaman awal saat aplikasi dibuka
+  const [showDeckList, setShowDeckList] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return localStorage.getItem('inka_theme') === 'dark';
   });
@@ -198,6 +200,8 @@ function MainContent() {
             currentDeck={currentDeck}
             onSelectDeck={(deck) => setCurrentDeck(deck)}
             onNavigateToDeckManager={() => setCurrentPage('decks')}
+            showDeckList={showDeckList}
+            onShowDeckListChange={setShowDeckList}
           />
         )}
 
