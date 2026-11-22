@@ -181,6 +181,13 @@ export interface ConvertedCard {
   card: Omit<Flashcard, 'deckId'>;
   deckName: string;
   ankiCardId: string;
+  note?: {
+    id: string;
+    noteTypeId: string;
+    fields: Record<string, string>;
+    tags: string[];
+    createdAt: number;
+  };
 }
 export interface ConvertedLog extends Omit<ReviewLog, 'id' | 'cardId' | 'deckId'> {
   inkaCardId: string;
@@ -194,6 +201,13 @@ export interface ConvertResult {
   mediaNames: Set<string>;     // semua nama media yang dirujuk kartu yang diimpor
   mediaMissing: Set<string>;   // dirujuk tetapi tidak ada di paket / tidak didukung
   mediaUsed: Set<string>;      // kunci media yang benar-benar dipakai
+  notetypes?: Array<{
+    id: string;
+    name: string;
+    isCloze?: boolean;
+    fields: Array<{ name: string }>;
+    templates: Array<{ name: string; qfmt: string; afmt: string }>;
+  }>;
 }
 
 /** Fields yang dirujuk template pertanyaan: {{Field}}, {{type:Field}}, {{furigana:Field}} ... */
@@ -293,8 +307,11 @@ export function convertPackage(
       }
     }
 
+    const noteId = `note-anki-${note.guid || note.id}`;
     const card: Omit<Flashcard, 'deckId'> = {
       id: `anki-${note.guid || note.id}-${c.ord}`,
+      noteId,
+      templateIdx: c.ord,
       front: conv(vals.front),
       back: conv(vals.back),
       meaning: conv(vals.meaning),
@@ -322,11 +339,37 @@ export function convertPackage(
       card.suspended = true;
     }
 
+    // Bangun raw fields untuk note asli
+    const rawNoteFields: Record<string, string> = {};
+    nt.fields.forEach((fName, idx) => {
+      rawNoteFields[fName] = conv(note.fields[idx] || '');
+    });
+
     const deckName = deckNameFor(pkg, c, opts);
-    res.cards.push({ card, deckName, ankiCardId: c.id });
+    res.cards.push({
+      card,
+      deckName,
+      ankiCardId: c.id,
+      note: {
+        id: noteId,
+        noteTypeId: `anki-nt-${nt.id}`,
+        fields: rawNoteFields,
+        tags: note.tags || [],
+        createdAt: Number(note.id) || Date.now(),
+      },
+    });
     idMap.set(c.id, card.id);
     deckOfCard.set(c.id, deckName);
   }
+
+  // Simpan definisi notetype Anki asli agar tersimpan di Inka
+  res.notetypes = Array.from(pkg.notetypes.values()).map((nt) => ({
+    id: `anki-nt-${nt.id}`,
+    name: nt.name,
+    isCloze: nt.isCloze,
+    fields: nt.fields.map((f) => ({ name: f })),
+    templates: nt.templates.map((t) => ({ name: t.name, qfmt: t.qfmt, afmt: t.afmt })),
+  }));
 
   for (const v of skippedCount.values()) res.skippedNotetypes.push(v);
 

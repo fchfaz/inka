@@ -20,6 +20,9 @@ import {
   getSettings,
   saveSettings,
   migrateLegacyProgress,
+  migrateV4Notes,
+  getAllNoteTypes,
+  getNote,
 } from './database';
 import {
   importRecallioBundle,
@@ -265,5 +268,39 @@ describe('backup penuh', () => {
     expect(validateFullBackup({ schema: 'recallio.deck-bundle' }).valid).toBe(false);
     expect(validateFullBackup(null).valid).toBe(false);
     expect(validateFullBackup({ schema: 'inka.backup', version: 1, decks: [] }).valid).toBe(false);
+  });
+});
+
+describe('migrasi v4: Note, NoteType, Card', () => {
+  it('berhasil memigrasi kartu lama ke Note (Japanese Vocab) dan mengisi noteTypes bawaan', async () => {
+    await saveDeck({ id: 'd1', name: 'Deck 1', description: '', createdAt: 1 });
+    const c1 = card('card-old-1', 'd1', {
+      front: '本',
+      back: 'ほん',
+      meaning: 'Buku',
+      example_jp: '本を読みます。',
+      tags: ['n5'],
+    });
+    await saveCard(c1);
+
+    const migratedCount = await migrateV4Notes();
+    expect(migratedCount).toBe(1);
+
+    const allCards = await getAllCards();
+    expect(allCards[0].noteId).toBe('note-card-old-1');
+    expect(allCards[0].templateIdx).toBe(0);
+
+    const note = await getNote('note-card-old-1');
+    expect(note).toBeDefined();
+    expect(note?.noteTypeId).toBe('builtin-japanese-vocab');
+    expect(note?.fields['Front']).toBe('本');
+    expect(note?.fields['Meaning']).toBe('Buku');
+    expect(note?.tags).toEqual(['n5']);
+
+    const noteTypes = await getAllNoteTypes();
+    expect(noteTypes.length).toBeGreaterThanOrEqual(5);
+
+    // Migrasi berikutnya tidak memproses ulang
+    expect(await migrateV4Notes()).toBe(0);
   });
 });

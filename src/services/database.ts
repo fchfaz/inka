@@ -1,12 +1,14 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import type { Deck, Flashcard, ReviewLog, StudySettings } from '../types/flashcard';
+import type { Note, NoteType } from '../types/models';
+import { BUILTIN_NOTE_TYPES } from './template';
 import { DEFAULT_SETTINGS } from '../types/flashcard';
 import { answerCard } from './srs';
 import { configureSfx } from './sfx';
 
 // Nama database tetap 'recallio_db' agar data pengguna lama tidak hilang.
 const DB_NAME = 'recallio_db';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
@@ -32,7 +34,7 @@ export async function resetDBConnection(): Promise<void> {
 
 function openDbInternal(): Promise<IDBPDatabase> {
   return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db, oldVersion) {
+    upgrade(db, oldVersion, _newVersion, transaction) {
       if (oldVersion < 1) {
         if (!db.objectStoreNames.contains('decks')) {
           const deckStore = db.createObjectStore('decks', { keyPath: 'id' });
@@ -68,6 +70,36 @@ function openDbInternal(): Promise<IDBPDatabase> {
         // Berkas media kartu (gambar/audio/video), kunci = hash isi + ekstensi
         if (!db.objectStoreNames.contains('media')) {
           db.createObjectStore('media', { keyPath: 'key' });
+        }
+      }
+
+      if (oldVersion < 4) {
+        // v4: Store notes dan noteTypes
+        if (!db.objectStoreNames.contains('noteTypes')) {
+          db.createObjectStore('noteTypes', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('notes')) {
+          const noteStore = db.createObjectStore('notes', { keyPath: 'id' });
+          noteStore.createIndex('by-deck', 'deckId');
+          noteStore.createIndex('by-notetype', 'noteTypeId');
+        }
+
+        // Tambah index pada cards untuk performa (state dan due)
+        const cardStore = db.objectStoreNames.contains('cards')
+          ? transaction.objectStore('cards')
+          : db.createObjectStore('cards', { keyPath: 'id' });
+
+        if (!cardStore.indexNames.contains('by-deck')) {
+          cardStore.createIndex('by-deck', 'deckId');
+        }
+        if (!cardStore.indexNames.contains('by-note')) {
+          cardStore.createIndex('by-note', 'noteId');
+        }
+        if (!cardStore.indexNames.contains('by-due')) {
+          cardStore.createIndex('by-due', 'srs.due');
+        }
+        if (!cardStore.indexNames.contains('by-state')) {
+          cardStore.createIndex('by-state', 'srs.state');
         }
       }
     },
@@ -230,9 +262,74 @@ export async function saveCard(card: Flashcard): Promise<void> {
 
 export async function deleteCard(cardId: string): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction(['cards', 'schedules'], 'readwrite');
-  await tx.objectStore('cards').delete(cardId);
+  const tx = db.transaction(['cards', 'notes', 'schedules'], 'readwrite');
+  const cardStore = tx.objectStore('cards');
+  const card: Flashcard | undefined = await cardStore.get(cardId);
+  await cardStore.delete(cardId);
   await tx.objectStore('schedules').delete(cardId);
+
+  // Jika kartu memiliki noteId dan tidak ada kartu lain untuk note tsb, hapus note
+  if (card?.noteId) {
+    const siblingCards = await cardStore.index('by-note').getAll(card.noteId);
+    if (siblingCards.length === 0) {
+      await tx.objectStore('notes').delete(card.noteId);
+    }
+  }
+  await tx.done;
+}
+
+// ---------------------------------------------------------------------------
+// Note & NoteType Operations (v4)
+// ---------------------------------------------------------------------------
+export async function getAllNoteTypes(): Promise<NoteType[]> {
+  const db = await getDB();
+  const noteTypes: NoteType[] = await db.getAll('noteTypes');
+  if (noteTypes.length === 0) {
+    // Inisialisasi default jika kosong
+    const tx = db.transaction('noteTypes', 'readwrite');
+    for (const nt of BUILTIN_NOTE_TYPES) {
+      await tx.store.put(nt);
+    }
+    await tx.done;
+    return BUILTIN_NOTE_TYPES;
+  }
+  return noteTypes;
+}
+
+export async function getNoteType(id: string): Promise<NoteType | undefined> {
+  const db = await getDB();
+  const nt = await db.get('noteTypes', id);
+  if (!nt) {
+    return BUILTIN_NOTE_TYPES.find((b) => b.id === id);
+  }
+  return nt;
+}
+
+export async function saveNoteType(noteType: NoteType): Promise<void> {
+  const db = await getDB();
+  await db.put('noteTypes', noteType);
+}
+
+export async function getNote(id: string): Promise<Note | undefined> {
+  const db = await getDB();
+  return db.get('notes', id);
+}
+
+export async function saveNote(note: Note): Promise<void> {
+  const db = await getDB();
+  await db.put('notes', note);
+}
+
+export async function deleteNote(noteId: string): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(['notes', 'cards', 'schedules'], 'readwrite');
+  await tx.objectStore('notes').delete(noteId);
+  const cardStore = tx.objectStore('cards');
+  const cards: Flashcard[] = await cardStore.index('by-note').getAll(noteId);
+  for (const c of cards) {
+    await cardStore.delete(c.id);
+    await tx.objectStore('schedules').delete(c.id);
+  }
   await tx.done;
 }
 
@@ -424,6 +521,64 @@ export async function seedDummyReviewLogs(targetDeckId: string, cards: Flashcard
 
   await tx.done;
   return seeded;
+}
+
+// ---------------------------------------------------------------------------
+// Migrasi ke v4 (Note, NoteType, Card)
+// ---------------------------------------------------------------------------
+const MIGRATION_V4_FLAG = 'migrated_notes_v4';
+
+export async function migrateV4Notes(): Promise<number> {
+  const db = await getDB();
+  if (await db.get('session_state', MIGRATION_V4_FLAG)) return 0;
+
+  // Pastikan noteTypes standar ada
+  const ntTx = db.transaction('noteTypes', 'readwrite');
+  for (const nt of BUILTIN_NOTE_TYPES) {
+    await ntTx.store.put(nt);
+  }
+  await ntTx.done;
+
+  const cards: Flashcard[] = await db.getAll('cards');
+  const tx = db.transaction(['cards', 'notes', 'session_state'], 'readwrite');
+  const cardStore = tx.objectStore('cards');
+  const noteStore = tx.objectStore('notes');
+  let migrated = 0;
+
+  for (const c of cards) {
+    if (c.noteId) continue;
+    const noteId = `note-${c.id}`;
+    const note: Note = {
+      id: noteId,
+      noteTypeId: 'builtin-japanese-vocab',
+      deckId: c.deckId,
+      fields: {
+        Front: c.front || '',
+        Back: c.back || '',
+        Meaning: c.meaning || '',
+        Example_JP: c.example_jp || '',
+        Example_Hiragana: c.example_hiragana || '',
+        Example_ID: c.example_id || '',
+        Hint: c.hint || '',
+        Extra: c.extra || '',
+      },
+      tags: c.tags || [],
+      createdAt: c.createdAt || Date.now(),
+    };
+    await noteStore.put(note);
+
+    const updatedCard: Flashcard = {
+      ...c,
+      noteId,
+      templateIdx: 0,
+    };
+    await cardStore.put(updatedCard);
+    migrated++;
+  }
+
+  await tx.objectStore('session_state').put(true, MIGRATION_V4_FLAG);
+  await tx.done;
+  return migrated;
 }
 
 // ---------------------------------------------------------------------------

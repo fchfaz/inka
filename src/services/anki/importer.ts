@@ -111,11 +111,23 @@ async function runImport(
   onProgress?.({ phase: 'cards', done: 0, total });
 
   try {
-    const tx = db.transaction(['decks', 'cards', 'revlog'], 'readwrite');
+    const tx = db.transaction(['decks', 'cards', 'revlog', 'notes', 'noteTypes'], 'readwrite');
     await runAtomic(tx, async () => {
       const deckStore = tx.objectStore('decks');
       const cardStore = tx.objectStore('cards');
       const revStore = tx.objectStore('revlog');
+      const noteStore = tx.objectStore('notes');
+      const ntStore = tx.objectStore('noteTypes');
+
+      // Simpan notetype Anki
+      if (conv.notetypes) {
+        for (const nt of conv.notetypes) {
+          const existing = await ntStore.get(nt.id);
+          if (!existing) {
+            await ntStore.put(nt);
+          }
+        }
+      }
 
       const decks: Deck[] = await deckStore.getAll();
       const deckByName = new Map(decks.map((d) => [d.name.trim().toLowerCase(), d]));
@@ -141,6 +153,13 @@ async function runImport(
         if (existing) {
           summary.cardsSkipped++;
         } else {
+          // Simpan Note jika ada
+          if (item.note) {
+            const existingNote = await noteStore.get(item.note.id);
+            if (!existingNote) {
+              await noteStore.put({ ...item.note, deckId: deck.id });
+            }
+          }
           await cardStore.put({ ...item.card, deckId: deck.id } as Flashcard);
           added.add(item.card.id);
           summary.cardsAdded++;

@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { Study } from './pages/Study';
-import { initializeDefaultDeck, getAllDecks, getDB, getSettings, migrateLegacyProgress } from './services/database';
+import { initializeDefaultDeck, getAllDecks, getDB, getSettings, migrateLegacyProgress, migrateV4Notes } from './services/database';
 import { installSfxListener } from './services/sfx';
 import { backupReminder, ensureFirstSeen, snoozeBackupReminder } from './services/backupReminder';
 import { isStoragePersistent, requestPersistentStorage } from './services/media';
@@ -61,6 +61,7 @@ function MainContent() {
       try {
         const settings = await getSettings();
         await migrateLegacyProgress(settings);
+        await migrateV4Notes();
       } catch (err) {
         console.error('Inisialisasi pengaturan/migrasi gagal:', err);
       }

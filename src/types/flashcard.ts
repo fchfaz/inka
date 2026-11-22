@@ -1,22 +1,10 @@
-/** 0 = Baru, 1 = Belajar, 2 = Review, 3 = Ulang (relearning). Sama dengan State di ts-fsrs. */
-export type CardState = 0 | 1 | 2 | 3;
-
-/** Status penjadwalan FSRS yang disimpan di tiap kartu. */
-export interface CardSrs {
-  due: number;            // epoch ms kapan kartu jatuh tempo
-  stability: number;
-  difficulty: number;
-  elapsedDays: number;
-  scheduledDays: number;
-  learningSteps: number;
-  reps: number;
-  lapses: number;
-  state: CardState;
-  lastReview?: number;    // epoch ms
-}
+import type { Note, NoteType, Card, CardTemplate, CardSrs, CardState } from './models';
+export type { Note, NoteType, Card, CardTemplate, CardSrs, CardState };
 
 export interface Flashcard {
   id: string;
+  noteId?: string;           // reference to Note if migrated or created in v4
+  templateIdx?: number;      // index in NoteType templates
   front: string;             // Kanji / vocabulary di depan
   back: string;              // Hiragana / furigana
   meaning: string;           // Arti bahasa Indonesia
@@ -31,6 +19,8 @@ export interface Flashcard {
   srs?: CardSrs;             // tidak ada = kartu baru
   suspended?: boolean;       // ditangguhkan (tidak muncul di antrean)
   buriedUntil?: string;      // studyDay 'YYYY-MM-DD' sampai kartu disembunyikan
+  flag?: number;             // 0-7
+  marked?: boolean;
 }
 
 export interface Deck {
