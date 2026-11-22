@@ -36,6 +36,12 @@ function MainContent() {
   const m = useMsg();
   const [reminder, setReminder] = useState<{ never: boolean; days: number } | null>(null);
   const [currentPage, setCurrentPage] = useState<'study' | 'decks' | 'stats' | 'settings'>('study');
+  const navItems = [
+    { page: 'study' as const, label: t.navStudy, Icon: BookMarked },
+    { page: 'decks' as const, label: t.navDecks, Icon: FolderKanban },
+    { page: 'stats' as const, label: t.navStats, Icon: BarChart3 },
+    { page: 'settings' as const, label: t.navSettings, Icon: Sliders },
+  ];
   const [currentDeck, setCurrentDeck] = useState<Deck | null>(null);
   // Daftar deck menjadi halaman awal saat aplikasi dibuka
   const [showDeckList, setShowDeckList] = useState(true);
@@ -107,61 +113,34 @@ function MainContent() {
 
           
           <nav className="flex items-center gap-1">
-            <button
-              onClick={() => setCurrentPage('study')}
-              aria-label={t.navStudy}
-              data-sfx="nav"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
-                currentPage === 'study'
-                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              <BookMarked size={15} />
-              <span>{t.navStudy}</span>
-            </button>
-
-            <button
-              onClick={() => setCurrentPage('decks')}
-              aria-label={t.navDecks}
-              data-sfx="nav"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
-                currentPage === 'decks'
-                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              <FolderKanban size={15} />
-              <span className="hidden sm:inline">{t.navDecks}</span>
-            </button>
-
-            <button
-              onClick={() => setCurrentPage('stats')}
-              aria-label={t.navStats}
-              data-sfx="nav"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
-                currentPage === 'stats'
-                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              <BarChart3 size={15} />
-              <span className="hidden sm:inline">{t.navStats}</span>
-            </button>
-
-            <button
-              onClick={() => setCurrentPage('settings')}
-              aria-label={t.navSettings}
-              data-sfx="nav"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${
-                currentPage === 'settings'
-                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              <Sliders size={15} />
-              <span className="hidden sm:inline">{t.navSettings}</span>
-            </button>
+            {navItems.map(({ page, label, Icon }) => {
+              const active = currentPage === page;
+              return (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  aria-label={label}
+                  aria-current={active ? 'page' : undefined}
+                  data-sfx="nav"
+                  className={`flex items-center px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors duration-300 ${
+                    active
+                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <Icon size={15} className="shrink-0" />
+                  {/* Layar kecil: label hanya muncul (dianimasikan) pada tab aktif.
+                      Layar lebar (sm+): label selalu tampil. */}
+                  <span
+                    className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-out sm:ml-1.5 sm:max-w-none sm:opacity-100 ${
+                      active ? 'max-w-[7rem] opacity-100 ml-1.5' : 'max-w-0 opacity-0 ml-0'
+                    }`}
+                  >
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
           </nav>
         </div>
       </header>
