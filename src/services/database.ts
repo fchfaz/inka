@@ -223,14 +223,13 @@ export async function saveDeck(deck: Deck): Promise<void> {
 
 export async function deleteDeck(deckId: string): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction(['decks', 'cards', 'schedules', 'revlog', 'session_state'], 'readwrite');
+  const tx = db.transaction(['decks', 'cards', 'revlog'], 'readwrite');
   await tx.objectStore('decks').delete(deckId);
 
   const cardStore = tx.objectStore('cards');
   const cards = await cardStore.index('by-deck').getAll(deckId);
   for (const card of cards) {
     await cardStore.delete(card.id);
-    await tx.objectStore('schedules').delete(card.id);
   }
 
   // Hapus riwayat review deck ini agar statistik tidak memuat data yatim.
@@ -240,7 +239,6 @@ export async function deleteDeck(deckId: string): Promise<void> {
     cursor = await cursor.continue();
   }
 
-  await tx.objectStore('session_state').delete(`counter_${deckId}`);
   await tx.done;
 }
 
@@ -262,11 +260,10 @@ export async function saveCard(card: Flashcard): Promise<void> {
 
 export async function deleteCard(cardId: string): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction(['cards', 'notes', 'schedules'], 'readwrite');
+  const tx = db.transaction(['cards', 'notes'], 'readwrite');
   const cardStore = tx.objectStore('cards');
   const card: Flashcard | undefined = await cardStore.get(cardId);
   await cardStore.delete(cardId);
-  await tx.objectStore('schedules').delete(cardId);
 
   // Jika kartu memiliki noteId dan tidak ada kartu lain untuk note tsb, hapus note
   if (card?.noteId) {
@@ -322,13 +319,12 @@ export async function saveNote(note: Note): Promise<void> {
 
 export async function deleteNote(noteId: string): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction(['notes', 'cards', 'schedules'], 'readwrite');
+  const tx = db.transaction(['notes', 'cards'], 'readwrite');
   await tx.objectStore('notes').delete(noteId);
   const cardStore = tx.objectStore('cards');
   const cards: Flashcard[] = await cardStore.index('by-note').getAll(noteId);
   for (const c of cards) {
     await cardStore.delete(c.id);
-    await tx.objectStore('schedules').delete(c.id);
   }
   await tx.done;
 }

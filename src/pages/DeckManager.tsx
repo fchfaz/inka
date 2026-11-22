@@ -30,16 +30,18 @@ import {
   Upload,
   Code,
   CheckCircle2,
-  AlertTriangle,
   FolderPlus,
   BookOpen,
   Pause,
   Play,
   FileSpreadsheet,
   FileArchive,
-  Paperclip,
 } from 'lucide-react';
 
+
+import { CreateDeckModal } from '../components/deck/CreateDeckModal';
+import { CardFormModal } from '../components/deck/CardFormModal';
+import { JsonEditorModal } from '../components/deck/JsonEditorModal';
 
 const AnkiImportDialog = lazy(() =>
   import('../components/AnkiImportDialog').then((m) => ({ default: m.AnkiImportDialog }))
@@ -581,294 +583,44 @@ export const DeckManager: React.FC<DeckManagerProps> = ({ currentDeck, onSelectD
       )}
 
       {/* Modal: Create Deck */}
-      {isCreatingDeck && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Buat Deck Baru</h3>
-            <form onSubmit={handleCreateDeck} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Nama Deck *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: Kosakata N3 Bab 1"
-                  value={newDeckName}
-                  onChange={(e) => setNewDeckName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Deskripsi (opsional)
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Keterangan singkat materi deck ini..."
-                  value={newDeckDesc}
-                  onChange={(e) => setNewDeckDesc(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreatingDeck(false)}
-                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700"
-                >
-                  Simpan Deck
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CreateDeckModal
+        isOpen={isCreatingDeck}
+        name={newDeckName}
+        description={newDeckDesc}
+        onNameChange={setNewDeckName}
+        onDescChange={setNewDeckDesc}
+        onClose={() => setIsCreatingDeck(false)}
+        onSubmit={handleCreateDeck}
+      />
 
       {/* Modal: Add/Edit Card */}
-      {isEditingCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-xl shadow-2xl my-8">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
-              {cardFormData.id ? 'Edit Flashcard' : 'Tambah Flashcard Baru'}
-            </h3>
-            <form onSubmit={handleSaveCard} className="space-y-3.5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                    Front / Kanji *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: 水"
-                    value={cardFormData.front || ''}
-                    onChange={(e) => setCardFormData({ ...cardFormData, front: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-japanese font-bold text-lg"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                    Back / Hiragana
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: みず"
-                    value={cardFormData.back || ''}
-                    onChange={(e) => setCardFormData({ ...cardFormData, back: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-japanese font-medium"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Arti Bahasa Indonesia
-                </label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Air"
-                  value={cardFormData.meaning || ''}
-                  onChange={(e) => setCardFormData({ ...cardFormData, meaning: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Contoh Kalimat Jepang (opsional)
-                </label>
-                <input
-                  type="text"
-                  
-                  placeholder="Contoh: 水を飲みます。"
-                  value={cardFormData.example_jp || ''}
-                  onChange={(e) => setCardFormData({ ...cardFormData, example_jp: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-japanese"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                    Hiragana Contoh Kalimat
-                  </label>
-                  <input
-                    type="text"
-                    
-                    placeholder="Contoh: みずを のみます。"
-                    value={cardFormData.example_hiragana || ''}
-                    onChange={(e) =>
-                      setCardFormData({ ...cardFormData, example_hiragana: e.target.value })
-                    }
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-japanese"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                    Terjemahan Contoh Kalimat
-                  </label>
-                  <input
-                    type="text"
-                    
-                    placeholder="Contoh: Saya minum air."
-                    value={cardFormData.example_id || ''}
-                    onChange={(e) => setCardFormData({ ...cardFormData, example_id: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Hint (opsional, tampil di sisi depan)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Contoh: kata benda, cairan"
-                  value={cardFormData.hint || ''}
-                  onChange={(e) => setCardFormData({ ...cardFormData, hint: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  {m('card.extraLabel')}
-                </label>
-                <textarea
-                  rows={2}
-                  value={cardFormData.extra || ''}
-                  onChange={(e) => setCardFormData({ ...cardFormData, extra: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-                />
-                <label data-sfx="file" className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs cursor-pointer hover:bg-slate-200">
-                  <Paperclip size={14} /> {m('card.attach')}
-                  <input
-                    type="file"
-                    accept="image/*,audio/*,video/*"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      e.target.value = '';
-                      if (!file) return;
-                      try {
-                        const token = await addMediaFile(file);
-                        setCardFormData((d) => ({ ...d, extra: d.extra ? `${d.extra} ${token}` : token }));
-                      } catch (err) {
-                        alert(err instanceof MediaStorageError ? err.message : m('card.attachFail', { err: (err as Error).message }));
-                      }
-                    }}
-                  />
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                  Tags (pisahkan dengan koma)
-                </label>
-                <input
-                  type="text"
-                  placeholder="n4, noun, travel"
-                  value={cardFormData.tags ? cardFormData.tags.join(', ') : ''}
-                  onChange={(e) =>
-                    setCardFormData({
-                      ...cardFormData,
-                      tags: e.target.value
-                        .split(',')
-                        .map((t) => t.trim().toLowerCase())
-                        .filter(Boolean),
-                    })
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsEditingCard(false)}
-                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 shadow-sm"
-                >
-                  Simpan Kartu
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CardFormModal
+        isOpen={isEditingCard}
+        formData={cardFormData}
+        onChange={setCardFormData}
+        onClose={() => setIsEditingCard(false)}
+        onSubmit={handleSaveCard}
+        onAttachMedia={async (files) => {
+          const file = files?.[0];
+          if (!file) return;
+          try {
+            const token = await addMediaFile(file);
+            setCardFormData((d) => ({ ...d, extra: d.extra ? `${d.extra} ${token}` : token }));
+          } catch (err) {
+            alert(err instanceof MediaStorageError ? err.message : m('card.attachFail', { err: (err as Error).message }));
+          }
+        }}
+      />
 
       {/* Modal: Full Direct JSON Editor */}
-      {isJsonEditorOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-3xl h-[85vh] flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Direct JSON Editor</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Format: recallio.deck-bundle (v1). Kartu dengan \"id\" yang sama diperbarui di tempat (progres belajar tetap); kartu tanpa id ditambahkan. Menghapus kartu dari JSON tidak menghapusnya dari database.
-                </p>
-              </div>
-              <button
-                onClick={() => setIsJsonEditorOpen(false)}
-                className="text-slate-600 dark:text-slate-400 hover:text-slate-600 dark:hover:text-white text-sm"
-              >
-                Tutup
-              </button>
-            </div>
-
-            {jsonError && (
-              <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-xs rounded-xl flex items-center gap-2">
-                <AlertTriangle size={16} />
-                <span>{jsonError}</span>
-              </div>
-            )}
-
-            <div className="flex-1 my-3 relative">
-              <textarea
-                value={jsonText}
-                onChange={(e) => setJsonText(e.target.value)}
-                className="w-full h-full font-mono text-xs p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-                spellCheck={false}
-              />
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-slate-600 dark:text-slate-400">
-                Data diverifikasi dan disimpan dalam satu transaksi.
-              </span>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsJsonEditorOpen(false)}
-                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveJsonEditor}
-                  className="px-5 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 shadow-sm"
-                >
-                  Terapkan Perubahan
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <JsonEditorModal
+        isOpen={isJsonEditorOpen}
+        jsonText={jsonText}
+        jsonError={jsonError}
+        onTextChange={setJsonText}
+        onClose={() => setIsJsonEditorOpen(false)}
+        onApply={handleSaveJsonEditor}
+      />
       {showAnkiImport && (
         <Suspense fallback={null}>
           <AnkiImportDialog
