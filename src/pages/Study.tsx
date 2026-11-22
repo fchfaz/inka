@@ -192,8 +192,8 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
       stopSpeaking();
       return;
     }
-    if (settings.autoSpeak) speak(spokenText, 'ja-JP');
-  }, [currentId, spokenText, isFlipped, settings.autoSpeak]);
+    speak(spokenText, 'ja-JP');
+  }, [currentId, spokenText, isFlipped]);
 
   const intervals = useMemo(
     () => (current && isFlipped ? previewIntervals(current.card, settings) : null),
@@ -470,7 +470,6 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
             key={current.card.id}
             card={current.card}
             isFlipped={isFlipped}
-            onFlip={handleFlip}
             disableAnimation={disableAnimation}
             onSpeak={handleSpeak}
           />
@@ -511,7 +510,7 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
               <button
                 data-sfx="none"
               onClick={handleFlip}
-                className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md transition"
+                className="w-full h-14 sm:h-16 flex items-center justify-center rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm sm:text-base font-semibold tracking-wide shadow-md transition-all duration-150"
               >
                 {t.showAnswer}
               </button>

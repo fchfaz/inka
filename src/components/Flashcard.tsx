@@ -8,7 +8,7 @@ import { useTranslation } from '../context/useTranslation';
 interface FlashcardProps {
   card: FlashcardType;
   isFlipped: boolean;
-  onFlip: () => void;
+  onFlip?: () => void;
   disableAnimation?: boolean;
   
   onSpeak?: () => void;
@@ -17,7 +17,6 @@ interface FlashcardProps {
 export const Flashcard: React.FC<FlashcardProps> = ({
   card,
   isFlipped,
-  onFlip,
   disableAnimation = false,
   onSpeak,
 }) => {
@@ -26,8 +25,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
 
   return (
     <div
-      onClick={onFlip}
-      className="w-full max-w-xl aspect-[1.6/1] sm:h-[340px] cursor-pointer select-none perspective-1000 group my-2 notranslate"
+      className="w-full max-w-xl aspect-[1.6/1] sm:h-[340px] select-none perspective-1000 group my-2 notranslate"
       translate="no"
     >
       <div
