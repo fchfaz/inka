@@ -27,6 +27,8 @@ export interface Deck {
   id: string;
   name: string;
   description: string;
+  parentId?: string;         // ID deck induk (untuk hierarki A::B)
+  presetId?: string;         // ID preset opsi belajar (StudySettings)
   createdAt: number;
 }
 
@@ -72,6 +74,32 @@ export const DEFAULT_SETTINGS: StudySettings = {
   autoSpeak: false,
   soundEnabled: true,
   soundVolume: 0.5,
+};
+
+export interface DeckPreset {
+  id: string;
+  name: string;
+  newPerDay: number;
+  reviewsPerDay: number;
+  desiredRetention: number;
+  learningSteps: string[];
+  relearningSteps: string[];
+  maximumInterval: number;
+  leechThreshold: number;
+  newCardOrder?: 'order' | 'random';
+}
+
+export const DEFAULT_DECK_PRESET: DeckPreset = {
+  id: 'preset-default',
+  name: 'Default Preset',
+  newPerDay: 20,
+  reviewsPerDay: 200,
+  desiredRetention: 0.9,
+  learningSteps: ['1m', '10m'],
+  relearningSteps: ['10m'],
+  maximumInterval: 36500,
+  leechThreshold: 8,
+  newCardOrder: 'order',
 };
 
 // JSON bundle exchange format (berbagi isi kartu, tanpa progres)

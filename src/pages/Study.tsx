@@ -6,14 +6,16 @@ import { useTranslation } from '../context/useTranslation';
 import {
   getCardsByDeck,
   getAllDecks,
+  getAllCards,
   getDailyStudiedCount,
   getReviewLogsForDay,
-  getSettings,
+  getDeckEffectiveSettings,
   getStudyDayString,
   saveCard,
   saveCardWithLog,
   undoReview,
 } from '../services/database';
+import { DeckListOverview } from '../components/DeckListOverview';
 import { answerCard, previewIntervals } from '../services/srs';
 import {
   buildQueue,
@@ -54,6 +56,8 @@ function formatClock(ts: number): string {
 export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavigateToDeckManager }) => {
   const { t } = useTranslation();
   const [decks, setDecks] = useState<Deck[]>([]);
+  const [allCards, setAllCards] = useState<FlashcardType[]>([]);
+  const [showDeckList, setShowDeckList] = useState(false);
   const [cardCount, setCardCount] = useState(0);
   const [settings, setSettings] = useState<StudySettings>(DEFAULT_SETTINGS);
   const [current, setCurrent] = useState<Current | null>(null);
@@ -63,7 +67,6 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
   const [isFlipped, setIsFlipped] = useState(false);
   const [disableAnimation, setDisableAnimation] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDeckDropdownOpen, setIsDeckDropdownOpen] = useState(false);
   const [dailyStudiedCount, setDailyStudiedCount] = useState<number>(0);
   const [undoDepth, setUndoDepth] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
@@ -108,19 +111,9 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
     cardShownAtRef.current = now;
   }, []);
 
-  // Tutup dropdown saat klik di luar
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDeckDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   useEffect(() => {
     getAllDecks().then(setDecks);
+    getAllCards().then(setAllCards);
   }, []);
 
   // Muat deck, pengaturan, dan progres hari ini
@@ -133,7 +126,10 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
         return;
       }
       setIsLoading(true);
-      const [deckCards, loadedSettings] = await Promise.all([getCardsByDeck(currentDeck.id), getSettings()]);
+      const [deckCards, loadedSettings] = await Promise.all([
+        getCardsByDeck(currentDeck.id),
+        getDeckEffectiveSettings(currentDeck.id),
+      ]);
       const day = getStudyDayString();
       const [logsToday, daily] = await Promise.all([getReviewLogsForDay(day, currentDeck.id), getDailyStudiedCount()]);
       if (!isMounted) return;
@@ -366,6 +362,21 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
     return () => window.removeEventListener('keydown', listener);
   }, []);
 
+  if (showDeckList || !currentDeck) {
+    return (
+      <DeckListOverview
+        decks={decks}
+        allCards={allCards}
+        settings={settings}
+        onSelectDeck={(deck) => {
+          onSelectDeck(deck);
+          setShowDeckList(false);
+        }}
+        onNavigateToDeckManager={onNavigateToDeckManager}
+      />
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-slate-500 dark:text-slate-400">
@@ -409,52 +420,23 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
         </div>
       )}
 
-      {/* Pemilih deck */}
+      {/* Header Deck & Balik ke Daftar Deck */}
       <div className="w-full max-w-xl mx-auto mb-3 flex items-center justify-between relative" ref={dropdownRef}>
-        <div className="relative inline-block text-left">
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setIsDeckDropdownOpen(!isDeckDropdownOpen)}
+            onClick={() => {
+              getAllDecks().then(setDecks);
+              getAllCards().then(setAllCards);
+              setShowDeckList(true);
+            }}
             className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-xs sm:text-sm font-semibold shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition"
+            title="Kembali ke Daftar Deck"
           >
             <BookOpen className="w-4 h-4 text-indigo-500" />
             <span className="max-w-[200px] truncate">{currentDeck.name}</span>
-            <ChevronDown className={`w-3.5 h-3.5 text-slate-600 dark:text-slate-400 transition-transform ${isDeckDropdownOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 -rotate-90" />
           </button>
-
-          {isDeckDropdownOpen && (
-            <div className="absolute left-0 mt-1.5 w-64 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl z-50 py-1.5 max-h-60 overflow-y-auto">
-              <div className="px-3 py-1 text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">{t.deckDropdownTitle}</div>
-              {decks.map((deck) => (
-                <button
-                  key={deck.id}
-                  onClick={() => {
-                    onSelectDeck(deck);
-                    setIsDeckDropdownOpen(false);
-                  }}
-                  className={`w-full text-left px-3.5 py-2 text-xs sm:text-sm flex items-center justify-between transition ${
-                    deck.id === currentDeck.id
-                      ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <span className="truncate">{deck.name}</span>
-                  {deck.id === currentDeck.id && <span className="text-xs">✓</span>}
-                </button>
-              ))}
-              <div className="border-t border-slate-100 dark:border-slate-800 mt-1 pt-1">
-                <button
-                  onClick={() => {
-                    setIsDeckDropdownOpen(false);
-                    onNavigateToDeckManager();
-                  }}
-                  className="w-full text-left px-3.5 py-2 text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800"
-                >
-                  {t.createManageOtherDecks}
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="flex items-center gap-3" aria-label={t.queueRemaining}>

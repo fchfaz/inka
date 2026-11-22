@@ -131,16 +131,33 @@ async function runImport(
 
       const decks: Deck[] = await deckStore.getAll();
       const deckByName = new Map(decks.map((d) => [d.name.trim().toLowerCase(), d]));
-      const ensureDeck = async (name: string): Promise<Deck> => {
-        const k = name.trim().toLowerCase();
-        let d = deckByName.get(k);
-        if (!d) {
-          d = { id: newDeckId(), name: name.trim(), description: 'Diimpor dari Anki', createdAt: Date.now() };
-          await deckStore.put(d);
-          deckByName.set(k, d);
-          summary.decksCreated++;
+      const ensureDeck = async (fullName: string): Promise<Deck> => {
+        const parts = fullName.split('::').map((p) => p.trim()).filter(Boolean);
+        let parentId: string | undefined = undefined;
+        let runningPath = '';
+        let lastDeck: Deck | null = null;
+
+        for (const part of parts) {
+          runningPath = runningPath ? `${runningPath}::${part}` : part;
+          const k = runningPath.toLowerCase();
+          let d = deckByName.get(k);
+          if (!d) {
+            d = {
+              id: newDeckId(),
+              name: runningPath,
+              description: 'Diimpor dari Anki',
+              parentId,
+              createdAt: Date.now(),
+            };
+            await deckStore.put(d);
+            deckByName.set(k, d);
+            summary.decksCreated++;
+          }
+          parentId = d.id;
+          lastDeck = d;
         }
-        return d;
+
+        return lastDeck ?? { id: newDeckId(), name: fullName.trim(), description: 'Diimpor dari Anki', createdAt: Date.now() };
       };
 
       const added = new Set<string>();

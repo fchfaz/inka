@@ -1,8 +1,8 @@
 import { openDB, type IDBPDatabase } from 'idb';
-import type { Deck, Flashcard, ReviewLog, StudySettings } from '../types/flashcard';
+import type { Deck, Flashcard, ReviewLog, StudySettings, DeckPreset } from '../types/flashcard';
 import type { Note, NoteType } from '../types/models';
 import { BUILTIN_NOTE_TYPES } from './template';
-import { DEFAULT_SETTINGS } from '../types/flashcard';
+import { DEFAULT_SETTINGS, DEFAULT_DECK_PRESET } from '../types/flashcard';
 import { answerCard } from './srs';
 import { configureSfx } from './sfx';
 
@@ -245,7 +245,80 @@ export async function deleteDeck(deckId: string): Promise<void> {
 // Flashcard Operations
 export async function getCardsByDeck(deckId: string): Promise<Flashcard[]> {
   const db = await getDB();
-  return db.getAllFromIndex('cards', 'by-deck', deckId);
+  const allDecks: Deck[] = await db.getAll('decks');
+
+  // Cari semua sub-deck (turunan hierarki langsung maupun tidak langsung)
+  const descendantDeckIds = new Set<string>([deckId]);
+  let added = true;
+  while (added) {
+    added = false;
+    for (const d of allDecks) {
+      if (d.parentId && descendantDeckIds.has(d.parentId) && !descendantDeckIds.has(d.id)) {
+        descendantDeckIds.add(d.id);
+        added = true;
+      }
+    }
+  }
+
+  // Jika tidak punya sub-deck, langsung query index
+  if (descendantDeckIds.size === 1) {
+    return db.getAllFromIndex('cards', 'by-deck', deckId);
+  }
+
+  // Kumpulkan kartu dari deck ini dan semua sub-decknya
+  const cards: Flashcard[] = [];
+  for (const id of descendantDeckIds) {
+    const deckCards = await db.getAllFromIndex('cards', 'by-deck', id);
+    cards.push(...deckCards);
+  }
+  return cards;
+}
+
+// ---------------------------------------------------------------------------
+// Deck Preset Operations
+// ---------------------------------------------------------------------------
+export async function getAllDeckPresets(): Promise<DeckPreset[]> {
+  const db = await getDB();
+  const presets = (await db.get('session_state', 'deck_presets')) as DeckPreset[] | undefined;
+  if (!presets || presets.length === 0) {
+    await db.put('session_state', [DEFAULT_DECK_PRESET], 'deck_presets');
+    return [DEFAULT_DECK_PRESET];
+  }
+  return presets;
+}
+
+export async function saveDeckPreset(preset: DeckPreset): Promise<void> {
+  const db = await getDB();
+  const presets = await getAllDeckPresets();
+  const idx = presets.findIndex((p) => p.id === preset.id);
+  if (idx >= 0) {
+    presets[idx] = preset;
+  } else {
+    presets.push(preset);
+  }
+  await db.put('session_state', presets, 'deck_presets');
+}
+
+export async function getDeckEffectiveSettings(deckId: string): Promise<StudySettings> {
+  const db = await getDB();
+  const globalSettings = await getSettings();
+  const deck: Deck | undefined = await db.get('decks', deckId);
+  if (!deck || !deck.presetId) return globalSettings;
+
+  const presets = await getAllDeckPresets();
+  const preset = presets.find((p) => p.id === deck.presetId);
+  if (!preset) return globalSettings;
+
+  return {
+    ...globalSettings,
+    newPerDay: preset.newPerDay,
+    reviewsPerDay: preset.reviewsPerDay,
+    desiredRetention: preset.desiredRetention,
+    learningSteps: preset.learningSteps,
+    relearningSteps: preset.relearningSteps,
+    maximumInterval: preset.maximumInterval,
+    leechThreshold: preset.leechThreshold,
+  };
 }
 
 export async function getAllCards(): Promise<Flashcard[]> {
