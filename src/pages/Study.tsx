@@ -351,6 +351,24 @@ export const Study: React.FC<StudyProps> = ({ currentDeck, onSelectDeck, onNavig
       handleBury();
     } else if (key === 'r') {
       handleSpeak();
+    } else if (key === '*') {
+      if (current) {
+        const updated = { ...current.card, marked: !current.card.marked };
+        void saveCard(updated);
+        cardsRef.current = cardsRef.current.map((c) => (c.id === updated.id ? updated : c));
+        setCurrent({ ...current, card: updated });
+        showToast(updated.marked ? 'Kartu ditandai (Marked ★)' : 'Tanda bintang dicabut');
+      }
+    } else if (['1', '2', '3', '4', '5', '6', '7'].includes(key) && !isFlipped) {
+      if (current) {
+        const flagNum = parseInt(key, 10);
+        const nextFlag = current.card.flag === flagNum ? 0 : flagNum;
+        const updated = { ...current.card, flag: nextFlag };
+        void saveCard(updated);
+        cardsRef.current = cardsRef.current.map((c) => (c.id === updated.id ? updated : c));
+        setCurrent({ ...current, card: updated });
+        showToast(nextFlag > 0 ? `Flag ${nextFlag} disematkan` : 'Flag dihapus');
+      }
     }
   };
   useEffect(() => {
